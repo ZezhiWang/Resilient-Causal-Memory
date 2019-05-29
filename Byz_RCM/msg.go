@@ -1,9 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"bytes"
-	"encoding/gob"	
+	"encoding/gob"
+	"fmt"
 )
 
 type Message struct {

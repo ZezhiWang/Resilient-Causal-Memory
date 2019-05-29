@@ -8,15 +8,15 @@ import (
 type ReadBufEntry struct {
 	counter 	int
 	val      	string
-	// vec_clock 	[]int
+	vec		 	[]int
 }
 
 type Client struct {
-	vec_clock      	[]int
-	counter        	int
-	writer_ts      	map[int]map[int][]int
-	readBuf        	map[ReadBufEntry]int
-	val_chan	   	chan string
+	vec_clock 	[]int
+	counter   	int
+	writeBuf  	map[int]int
+	readBuf   	map[ReadBufEntry]map[int]bool
+	tvChan  	chan TagVal
 }
 
 func (clt *Client) init() {
@@ -27,38 +27,38 @@ func (clt *Client) init() {
 		clt.vec_clock[i] = 0
 	}
 	clt.counter = 0
-	// init writer_ts as counter(int) - timestamp([]int) pairs
-	clt.writer_ts = make(map[int]map[int][]int)
+	// init writeBuf as counter(int) - timestamp([]int) pairs
+	clt.writeBuf = make(map[int]int)
 	// init read buffer as counter(int) - (value, timestamp) tuple (ReadBufEntry) pairs
-	clt.readBuf = make(map[ReadBufEntry]int)
+	clt.readBuf = make(map[ReadBufEntry]map[int]bool)
 
-	clt.val_chan = make(chan string, 1)
+	clt.tvChan = make(chan TagVal, 1)
 }
 
 func (clt *Client) read(key string) string {
-	var val string
+	var res TagVal
+	var shouldBreak bool
 	dealer := createDealerSocket()
 	defer dealer.Close()
 	msg := Message{Kind: READ, Key: key, Id: node_id, Counter: clt.counter, Vec: clt.vec_clock}
 	zmqBroadcast(&msg, dealer)
 	fmt.Printf("Client %d broadcasted msg READ\n", node_id)
 
-	EnoughRESP: 
-		for i:=0; i < len(server_list); i++ {
-			clt.recvRESP(dealer)
-			select {
-			case val = <-clt.val_chan:
-				break EnoughRESP
-			default:
-			}
+	// at most N RESP and N * F + 1 MATCH
+	for i:=0; i < len(server_list) * (F + 1) + 2; i++ {
+		res,shouldBreak = clt.recvRESP(dealer)
+		if shouldBreak{
+			break
 		}
+	}
 
+	// merge vector clock
+	clt.merge_clock(res.ts)
 	clt.counter += 1
-	return val
+	return res.val
 }
 
 func (clt *Client) write(key string, value string) {
-	var numAck int
 	dealer := createDealerSocket()
 	defer dealer.Close()
 	clt.vec_clock[node_id] += 1
@@ -68,21 +68,15 @@ func (clt *Client) write(key string, value string) {
 
 	for i:=0; i < len(server_list); i++{
 		clt.recvACK(dealer)
-		numAck = len(clt.writer_ts[clt.counter])
-		if numAck > F {
+		if numAck,isIn := clt.writeBuf[clt.counter]; isIn && numAck > F {
 			break
 		}
-	}
-	vec_set := clt.writer_ts[clt.counter]
-	// merge all elements of writer_ts[counter] with local vector clock
-	for _, vec := range vec_set {
-		clt.merge_clock(vec)
 	}
 	clt.counter += 1
 }
 
 // Actions to take if receive RESP message
-func (clt *Client) recvRESP(dealer *zmq.Socket) {
+func (clt *Client) recvRESP(dealer *zmq.Socket) (TagVal,bool) {
 	msgBytes, err := dealer.RecvBytes(0)
 	if err != nil {
 		fmt.Println("Error occurred when client receiving ACK, err msg: ", err)
@@ -90,23 +84,26 @@ func (clt *Client) recvRESP(dealer *zmq.Socket) {
 	}
 	msg := getMsgFromGob(msgBytes)
 
-	if msg.Kind != RESP || msg.Counter != clt.counter {
-		clt.recvRESP(dealer)
-	} else {
-		entry := ReadBufEntry{counter: msg.Counter, val: msg.Val}
-		if _, isIn := clt.readBuf[entry]; isIn {
-			clt.readBuf[entry] += 1
-		} else {
-			clt.readBuf[entry] = 1
+	if msg.Kind == MATCH{
+		readEty := ReadBufEntry{counter:msg.Counter, val: msg.Val, vec: msg.Vec}
+		if _,isIn := clt.readBuf[readEty]; !isIn{
+			clt.readBuf[readEty] = make(map[int]bool)
 		}
+		clt.readBuf[readEty][msg.Sender] = true
 
-		clt.merge_clock(msg.Vec)
-
-		if clt.readBuf[entry] == F+1 {
-			clt.val_chan <- msg.Val
+		if len(clt.readBuf[readEty]) > F {
+			return TagVal{val: msg.Val,ts: msg.Vec},true
 		}
 	}
-	
+
+	if msg.Kind == RESP && msg.Counter == clt.counter {
+		if smallerEqualExceptI(msg.Vec,clt.vec_clock,99999){
+			msg.Kind = CHECK
+			zmqBroadcast(&msg,dealer)
+		}
+	}
+
+	return TagVal{make([]int,1),""},false
 }
 
 // Actions to take if receive ACK message
@@ -120,11 +117,10 @@ func (clt *Client) recvACK(dealer *zmq.Socket) {
 	if msg.Kind != ACK || msg.Counter != clt.counter {
 		clt.recvACK(dealer)
 	} else {
-		if _, isIn := clt.writer_ts[msg.Counter]; !isIn {
-			clt.writer_ts[msg.Counter] = make(map[int][]int)
+		if _, isIn := clt.writeBuf[msg.Counter]; !isIn {
+			clt.writeBuf[msg.Counter] = 0
 		}
-		fmt.Println("ACK message received vec", msg.Vec)
-		clt.writer_ts[msg.Counter][len(clt.writer_ts[msg.Counter])] = msg.Vec
+		clt.writeBuf[msg.Counter] += 1
 	}
 }
 

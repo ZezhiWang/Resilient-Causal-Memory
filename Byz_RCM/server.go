@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	zmq "github.com/pebbe/zmq4"
 	"sync"
 )
@@ -14,113 +13,114 @@ type WitnessEntry struct {
 }
 
 type Server struct {
-	vec_clock      []int
-	vec_clock_lock sync.Mutex
-	vec_clock_cond *sync.Cond
-	queue          Queue
-	witness        map[WitnessEntry]map[int]bool
-	has_sent		map[WitnessEntry]bool
-	has_sent_lock	sync.Mutex
-	publisher_lock sync.Mutex
-	publisher      *zmq.Socket
-	subscriber     *zmq.Socket
+	vecClock      []int
+	vecClockLock  sync.Mutex
+	vecClockCond  *sync.Cond
+	queue         Queue
+	witness       map[WitnessEntry]map[int]bool
+	hasSent       map[WitnessEntry]bool
+	hasSentLock   sync.Mutex
+	publisherLock sync.Mutex
+	publisher     *zmq.Socket
+	subscriber    *zmq.Socket
 }
 
-func (svr *Server) init(pub_port string) {
-	svr.vec_clock = make([]int, NUM_CLIENT)
-	svr.vec_clock_lock = sync.Mutex{}
-	svr.vec_clock_cond = sync.NewCond(&svr.vec_clock_lock)
+func (svr *Server) init(pubPort string) {
+	svr.vecClock = make([]int, NUM_CLIENT)
+	svr.vecClockLock = sync.Mutex{}
+	svr.vecClockCond = sync.NewCond(&svr.vecClockLock)
 	// set vector timestamp to zero
 	for i := 0; i < NUM_CLIENT; i++ {
-		svr.vec_clock[i] = 0
+		svr.vecClock[i] = 0
 	}
 	// init queue
 	svr.queue.Init()
 	// init witness
 	svr.witness = make(map[WitnessEntry]map[int]bool)
-	svr.has_sent = make(map[WitnessEntry]bool)
-	svr.has_sent_lock = sync.Mutex{}
-	svr.publisher = createPublisherSocket(pub_port)
+	svr.hasSent = make(map[WitnessEntry]bool)
+	svr.hasSentLock = sync.Mutex{}
+	svr.publisher = createPublisherSocket(pubPort)
 	svr.subscriber = createSubscriberSocket()
 	go svr.subscribe()
 }
 
 // Actions to take if server receives READ message
-func (svr *Server) recvRead(key string, id int, counter int, vec_i []int) *Message {
-	// wait until t_server is greater than t_i
-	svr.waitUntilServerClockGreaterExceptI(vec_i, 999999)
+func (svr *Server) recvRead(key string, id int, counter int, vecI []int) *Message {
+	// wait until M[k].t is greater than t_i
+	svr.waitUntilServerClockGreaterExceptI(key, vecI, 999999)
 
 	// send RESP message to client i
-	msg := Message{Kind: RESP, Counter: counter, Val: d.ReadString(key), Vec: svr.vec_clock}
+	ety := readFromDisk(key)
+	msg := Message{Kind: RESP, Counter: counter, Val: ety.val, Vec: ety.ts}
 	return &msg
 }
 
 // Actions to take if server receives WRITE message
-func (svr *Server) recvWrite(key string, val string, id int, counter int, vec_i []int) *Message{
+func (svr *Server) recvWrite(key string, val string, id int, counter int, vecI []int) *Message{
 	// broadcast UPDATE message
-	msg := Message{Kind: UPDATE, Key: key, Val: val, Id: id, Counter: counter, Vec: vec_i, Sender: node_id}
-	entry := WitnessEntry{id: id, counter: counter}
-	svr.has_sent_lock.Lock()
-	if _,isIn := svr.has_sent[entry]; !isIn {
-		svr.publish(&msg)
-		svr.has_sent[entry] = true
-		// fmt.Printf("Server %d published msg UPDATE in response to WRITE from client %d\n", node_id, id)
-	}
-	svr.has_sent_lock.Unlock()
+	msg := Message{Kind: UPDATE, Key: key, Val: val, Id: id, Counter: counter, Vec: vecI, Sender: node_id}
 
-	// wait until t_server is greater than t_i
-	svr.waitUntilServerClockGreaterExceptI(vec_i, 999999)
+	entry := WitnessEntry{id: id, counter: counter}
+
+	svr.hasSentLock.Lock()
+	if _,isIn := svr.hasSent[entry]; !isIn {
+		svr.publish(&msg)
+		svr.hasSent[entry] = true
+	}
+	svr.hasSentLock.Unlock()
+
+	// wait until M[k].t is greater than t_i
+	svr.waitUntilServerClockGreaterExceptI(key, vecI, 999999)
 
 	// send ACK message to client i
-	msg = Message{Kind: ACK, Counter: counter, Vec: svr.vec_clock}
+	msg = Message{Kind: ACK, Counter: counter, Vec: make([]int,1)}
+	return &msg
+}
+
+// Actions to take if server receives CHECK message
+func (svr *Server) recvCheck(key string, val string, id int, counter int, vecI []int) *Message{
+	hist := histFromDisk(key)
+	msg := Message{Kind: ERROR, Key: key, Val: val, Id: id, Counter: counter, Vec: vecI}
+	for _,ety := range hist{
+		if isEqual(ety,TagVal{val:val,ts: vecI}){
+			msg.Kind = MATCH
+			break
+		}
+	}
 	return &msg
 }
 
 // Actions to take if server receives UPDATE message
-func (svr *Server) recvUpdate(key string, val string, id int, counter int, vec_i []int, sender_id int) {
+func (svr *Server) recvUpdate(key string, val string, id int, counter int, vecI []int, senderId int) {
 	entry := WitnessEntry{key: key, val: val, id: id, counter: counter}
 
+	// if this is first UPDATE msg from sender
 	if _, isIn := svr.witness[entry]; isIn {
-		if _, hasReceived := svr.witness[entry][sender_id]; !hasReceived {
-			svr.witness[entry][sender_id] = true
-
-			if len(svr.witness[entry]) == F+1 {
-				// Publish UPDATE
-				svr.has_sent_lock.Lock()
-				if _,isIn := svr.has_sent[entry]; !isIn {
-					msg := Message{Kind: UPDATE, Key: key, Val: val, Id: id, Counter: counter, Vec: vec_i, Sender: node_id}
-					svr.publish(&msg)
-					svr.has_sent[entry] = true
-					// fmt.Printf("Server %d published msg UPDATE in response to UPDATE from server %d\n", node_id, sender_id)
-				}
-				svr.has_sent_lock.Unlock()
-
-				queue_entry := QueueEntry{Key: key, Val: val, Id: id, Vec: vec_i}
-				svr.queue.Enqueue(queue_entry)
-				go svr.update()
-				// fmt.Println("server enqueues entry: ", queue_entry)
-			}
+		if _, hasReceived := svr.witness[entry][senderId]; !hasReceived {
+			svr.witness[entry][senderId] = true
 		}
 	} else {
 		svr.witness[entry] = make(map[int]bool)
-		svr.witness[entry][sender_id] = true
+		svr.witness[entry][senderId] = true
+	}
 
-		if len(svr.witness[entry]) == F+1 {
-			// Publish UPDATE
-			svr.has_sent_lock.Lock()
-			if _,isIn := svr.has_sent[entry]; !isIn {
-				msg := Message{Kind: UPDATE, Key: key, Val: val, Id: id, Counter: counter, Vec: vec_i, Sender: node_id}
-				svr.publish(&msg)
-				svr.has_sent[entry] = true
-				// fmt.Printf("Server %d published msg UPDATE in response to UPDATE from server %d\n", node_id, sender_id)
-			}
-			svr.has_sent_lock.Unlock()
-
-			queue_entry := QueueEntry{Key: key, Val: val, Id: id, Vec: vec_i}
-			svr.queue.Enqueue(queue_entry)
-			go svr.update()
-			// fmt.Println("server enqueues entry: ", queue_entry)
+	// if received F + 1 unique UPDATE msg
+	if len(svr.witness[entry]) == F+1 {
+		// Publish UPDATE
+		svr.hasSentLock.Lock()
+		if _, isIn := svr.hasSent[entry]; !isIn {
+			msg := Message{Kind: UPDATE, Key: key, Val: val, Id: id, Counter: counter, Vec: vecI, Sender: node_id}
+			svr.publish(&msg)
+			svr.hasSent[entry] = true
 		}
+		svr.hasSentLock.Unlock()
+	}
+
+	// if received N - F unique UPDATE msg
+	if len(svr.witness[entry]) == len(server_list) - F {
+		queueEntry := QueueEntry{Key: key, Val: val, Id: id, Vec: vecI}
+		svr.queue.Enqueue(queueEntry)
+		go svr.update()
 	}
 }
 
@@ -128,25 +128,21 @@ func (svr *Server) recvUpdate(key string, val string, id int, counter int, vec_i
 func (svr *Server) update() {
 	msg := svr.queue.Dequeue()
 	if msg != nil {
-		// fmt.Println("server receives msg with vec_clock: ", msg.Vec)
-		// fmt.Println("server has queue: ", svr.queue.values)
-		// fmt.Println("server has vec_clock: ", svr.vec_clock)
-		svr.vec_clock_cond.L.Lock()
-		for svr.vec_clock[msg.Id] != msg.Vec[msg.Id]-1 || !smallerEqualExceptI(msg.Vec, svr.vec_clock, msg.Id) {
-			if svr.vec_clock[msg.Id] > msg.Vec[msg.Id]-1 {
+		svr.vecClockCond.L.Lock()
+		for svr.vecClock[msg.Id] != msg.Vec[msg.Id]-1 || !smallerEqualExceptI(msg.Vec, svr.vecClock, msg.Id) {
+			if svr.vecClock[msg.Id] > msg.Vec[msg.Id]-1 {
 				return
 			}
-			svr.vec_clock_cond.Wait()
+			svr.vecClockCond.Wait()
 		}
 		// update timestamp and write to local memory
-		svr.vec_clock[msg.Id] = msg.Vec[msg.Id]
-		// fmt.Println("server increments vec_clock: ", svr.vec_clock)
-		svr.vec_clock_cond.Broadcast()
-		svr.vec_clock_cond.L.Unlock()
+		svr.vecClock[msg.Id] = msg.Vec[msg.Id]
+		mEty := readFromDisk(msg.Key)
+		histAppend(msg.Key,TagVal{val:mEty.val,ts:mEty.ts})
+		storeToDisk(msg.Key,&TagVal{val:msg.Val,ts:svr.vecClock})
 
-		if err := d.WriteString(msg.Key,msg.Val); err != nil{
-			fmt.Println(err)
-		}
+		svr.vecClockCond.Broadcast()
+		svr.vecClockCond.L.Unlock()
 	}
 }
 
@@ -166,10 +162,11 @@ func smallerEqualExceptI(vec1 []int, vec2 []int, i int) bool {
 	return true
 }
 
-func (svr *Server) waitUntilServerClockGreaterExceptI(vec []int, i int) {
-	svr.vec_clock_cond.L.Lock()
-	for !smallerEqualExceptI(vec, svr.vec_clock, i) {
-		svr.vec_clock_cond.Wait()
+func (svr *Server) waitUntilServerClockGreaterExceptI(key string, vec []int, i int) {
+	svr.vecClockCond.L.Lock()
+	ety := readFromDisk(key)
+	for !smallerEqualExceptI(vec, ety.ts, i) {
+		svr.vecClockCond.Wait()
 	}
-	svr.vec_clock_cond.L.Unlock()
+	svr.vecClockCond.L.Unlock()
 }

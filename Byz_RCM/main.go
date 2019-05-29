@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/peterbourgon/diskv"
 	"os"
 	// "time"
 	// "sync"
@@ -19,9 +18,6 @@ var (
 	server_list = make(map[int]string)
 	server_pub = make(map[int]string)
 	status   	bool
-	d = diskv.New(diskv.Options{
-		BasePath:     "data",
-	})
 )
 
 func main() {
