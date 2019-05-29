@@ -1,11 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
-	"github.com/peterbourgon/diskv"
 	"os"
-	"bufio"
 	"strconv"
 	"strings"
 )
@@ -13,13 +12,9 @@ import (
 var (
 	node_id     int
 	node_type 	string
-	// mutex = new(sync.mutex)
 	server_list = make(map[int]string)
 	server_pub = make(map[int]string)
 	status   	bool
-	d = diskv.New(diskv.Options{
-		BasePath:     "data",
-	})
 )
 
 func main() {

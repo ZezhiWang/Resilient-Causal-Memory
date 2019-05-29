@@ -72,6 +72,8 @@ func (svr *Server) createRep(input Message) *Message {
 		case WRITE:
 			// fmt.Println("server receives WRITE message with vec_clock", msg.Vec)
 			output = svr.recvWrite(input.Key, input.Val, input.Id, input.Counter, input.Vec)
+		case CHECK:
+			output = svr.recvCheck(input.Key,input.Val,input.Id,input.Counter,input.Vec)
 	}
 	return output
 }

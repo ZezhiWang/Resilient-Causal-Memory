@@ -5,7 +5,10 @@ const WRITE = 2
 const UPDATE = 3
 const RESP = 4
 const ACK = 5
-const ERROR = 6
+const CHECK = 6
+const MATCH = 7
+
+const ERROR = 8
 
 const FILTER = ""
 
