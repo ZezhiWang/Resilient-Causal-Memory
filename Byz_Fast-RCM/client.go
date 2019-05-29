@@ -8,7 +8,12 @@ import (
 type ReadBufKey struct {
 	counter 	int
 	val 		string
-	// vec_clock	[]int
+}
+
+type ReadBufValue struct {
+	val 		string
+	number 		int
+	vec_clock	[]int
 }
 
 type Client struct {
@@ -108,8 +113,15 @@ func (clt *Client) recvRESP(dealer *zmq.Socket) {
 				clt.val_chan <- msg.Val
 			}
 		}
+		buf_temp := clt.readBuf[readBuf_key]
+		clt.readBuf_lock.Unlock()
+
+		if buf_temp.number == F+1 {
+			clt.val_chan <- buf_temp
+ 		}
 	}
 }
+
 func (clt *Client) recvACK(dealer *zmq.Socket) {
 	msgBytes, err := dealer.RecvBytes(0)
 	if err != nil {
