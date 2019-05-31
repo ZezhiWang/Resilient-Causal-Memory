@@ -14,8 +14,9 @@ type ReadBufEntry struct {
 type Client struct {
 	vec_clock 	[]int
 	counter   	int
-	writeBuf  	map[int]int
+	writeBuf  	map[int]map[int]bool
 	readBuf   	map[ReadBufEntry]map[int]bool
+	hasResp     map[int]map[int]bool
 	tvChan  	chan TagVal
 }
 
@@ -28,9 +29,11 @@ func (clt *Client) init() {
 	}
 	clt.counter = 0
 	// init writeBuf as counter(int) - timestamp([]int) pairs
-	clt.writeBuf = make(map[int]int)
+	clt.writeBuf = make(map[int]map[int]bool)
 	// init read buffer as counter(int) - (value, timestamp) tuple (ReadBufEntry) pairs
 	clt.readBuf = make(map[ReadBufEntry]map[int]bool)
+	// init has response
+	clt.hasResp = make(map[int]map[int]bool)
 
 	clt.tvChan = make(chan TagVal, 1)
 }
@@ -53,7 +56,7 @@ func (clt *Client) read(key string) string {
 	}
 
 	// merge vector clock
-	clt.merge_clock(res.ts)
+	clt.mergeClock(res.ts)
 	clt.counter += 1
 	return res.val
 }
@@ -68,7 +71,7 @@ func (clt *Client) write(key string, value string) {
 
 	for i:=0; i < len(server_list); i++{
 		clt.recvACK(dealer)
-		if numAck,isIn := clt.writeBuf[clt.counter]; isIn && numAck > F {
+		if acks,isIn := clt.writeBuf[clt.counter]; isIn && len(acks) > F {
 			break
 		}
 	}
@@ -97,9 +100,17 @@ func (clt *Client) recvRESP(dealer *zmq.Socket) (TagVal,bool) {
 	}
 
 	if msg.Kind == RESP && msg.Counter == clt.counter {
-		if smallerEqualExceptI(msg.Vec,clt.vec_clock,99999){
-			msg.Kind = CHECK
-			zmqBroadcast(&msg,dealer)
+		if _,isIn := clt.hasResp[msg.Counter]; !isIn {
+			clt.hasResp[msg.Counter] = make(map[int]bool)
+		}
+
+		if _,isIn := clt.hasResp[msg.Counter][msg.Sender]; !isIn {
+			if smallerEqualExceptI(msg.Vec,clt.vec_clock,99999){
+				msg.Kind = CHECK
+				zmqBroadcast(&msg,dealer)
+			}
+		} else {
+			clt.hasResp[msg.Counter][msg.Sender] = true
 		}
 	}
 
@@ -118,14 +129,14 @@ func (clt *Client) recvACK(dealer *zmq.Socket) {
 		clt.recvACK(dealer)
 	} else {
 		if _, isIn := clt.writeBuf[msg.Counter]; !isIn {
-			clt.writeBuf[msg.Counter] = 0
+			clt.writeBuf[msg.Counter] = make(map[int]bool)
 		}
-		clt.writeBuf[msg.Counter] += 1
+		clt.writeBuf[msg.Counter][msg.Sender] = true
 	}
 }
 
 // helper function that merges a vector clock with client's own vector clock
-func (clt *Client) merge_clock(vec []int) {
+func (clt *Client) mergeClock(vec []int) {
 	if len(clt.vec_clock) != len(vec) {
 		fmt.Println(clt.vec_clock)
 		fmt.Println(vec)
