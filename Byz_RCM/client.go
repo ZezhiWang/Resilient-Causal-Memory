@@ -6,32 +6,31 @@ import (
 )
 
 type ReadBufEntry struct {
-	counter 	int
 	val      	string
 	vec		 	[]int
 }
 
 type Client struct {
-	vec_clock 	[]int
-	counter   	int
-	writeBuf  	map[int]map[int]bool
-	readBuf   	map[ReadBufEntry]map[int]bool
-	hasResp     map[int]map[int]bool
-	tvChan  	chan TagVal
+	vecClock []int
+	counter  int
+	writeBuf map[int]map[int]bool
+	readBuf  map[int]map[ReadBufEntry]map[int]bool
+	hasResp  map[int]map[int]bool
+	tvChan   chan TagVal
 }
 
 func (clt *Client) init() {
 	// init vector timestamp with length group_size
-	clt.vec_clock = make([]int, NUM_CLIENT)
+	clt.vecClock = make([]int, NUM_CLIENT)
 	// set vector timestamp to zero
 	for i := 0; i < NUM_CLIENT; i++ {
-		clt.vec_clock[i] = 0
+		clt.vecClock[i] = 0
 	}
 	clt.counter = 0
 	// init writeBuf as counter(int) - timestamp([]int) pairs
 	clt.writeBuf = make(map[int]map[int]bool)
 	// init read buffer as counter(int) - (value, timestamp) tuple (ReadBufEntry) pairs
-	clt.readBuf = make(map[ReadBufEntry]map[int]bool)
+	clt.readBuf = make(map[int]map[ReadBufEntry]map[int]bool)
 	// init has response
 	clt.hasResp = make(map[int]map[int]bool)
 
@@ -43,7 +42,7 @@ func (clt *Client) read(key string) string {
 	var shouldBreak bool
 	dealer := createDealerSocket()
 	defer dealer.Close()
-	msg := Message{Kind: READ, Key: key, Id: node_id, Counter: clt.counter, Vec: clt.vec_clock}
+	msg := Message{Kind: READ, Key: key, Id: node_id, Counter: clt.counter, Vec: clt.vecClock}
 	zmqBroadcast(&msg, dealer)
 	fmt.Printf("Client %d broadcasted msg READ\n", node_id)
 
@@ -57,6 +56,10 @@ func (clt *Client) read(key string) string {
 
 	// merge vector clock
 	clt.mergeClock(res.ts)
+
+	delete(clt.hasResp,clt.counter)
+	delete(clt.readBuf,clt.counter)
+
 	clt.counter += 1
 	return res.val
 }
@@ -64,8 +67,8 @@ func (clt *Client) read(key string) string {
 func (clt *Client) write(key string, value string) {
 	dealer := createDealerSocket()
 	defer dealer.Close()
-	clt.vec_clock[node_id] += 1
-	msg := Message{Kind: WRITE, Key: key, Val: value, Id: node_id, Counter: clt.counter, Vec: clt.vec_clock}
+	clt.vecClock[node_id] += 1
+	msg := Message{Kind: WRITE, Key: key, Val: value, Id: node_id, Counter: clt.counter, Vec: clt.vecClock}
 	zmqBroadcast(&msg, dealer)
 	fmt.Printf("Client %d broadcasted msg WRITE\n", node_id)
 
@@ -75,6 +78,8 @@ func (clt *Client) write(key string, value string) {
 			break
 		}
 	}
+
+	delete(clt.writeBuf,clt.counter)
 	clt.counter += 1
 }
 
@@ -88,13 +93,18 @@ func (clt *Client) recvRESP(dealer *zmq.Socket) (TagVal,bool) {
 	msg := getMsgFromGob(msgBytes)
 
 	if msg.Kind == MATCH{
-		readEty := ReadBufEntry{counter:msg.Counter, val: msg.Val, vec: msg.Vec}
-		if _,isIn := clt.readBuf[readEty]; !isIn{
-			clt.readBuf[readEty] = make(map[int]bool)
+		if _,isIn := clt.readBuf[msg.Counter]; !isIn {
+			clt.readBuf[msg.Counter] = make(map[ReadBufEntry]map[int]bool)
 		}
-		clt.readBuf[readEty][msg.Sender] = true
 
-		if len(clt.readBuf[readEty]) > F {
+
+		readEty := ReadBufEntry{val: msg.Val, vec: msg.Vec}
+		if _,isIn := clt.readBuf[msg.Counter][readEty]; !isIn{
+			clt.readBuf[msg.Counter][readEty] = make(map[int]bool)
+		}
+		clt.readBuf[msg.Counter][readEty][msg.Sender] = true
+
+		if len(clt.readBuf[msg.Counter][readEty]) > F {
 			return TagVal{val: msg.Val,ts: msg.Vec},true
 		}
 	}
@@ -105,7 +115,7 @@ func (clt *Client) recvRESP(dealer *zmq.Socket) (TagVal,bool) {
 		}
 
 		if _,isIn := clt.hasResp[msg.Counter][msg.Sender]; !isIn {
-			if smallerEqualExceptI(msg.Vec,clt.vec_clock,99999){
+			if smallerEqualExceptI(msg.Vec,clt.vecClock,99999){
 				msg.Kind = CHECK
 				zmqBroadcast(&msg,dealer)
 			}
@@ -137,14 +147,14 @@ func (clt *Client) recvACK(dealer *zmq.Socket) {
 
 // helper function that merges a vector clock with client's own vector clock
 func (clt *Client) mergeClock(vec []int) {
-	if len(clt.vec_clock) != len(vec) {
-		fmt.Println(clt.vec_clock)
+	if len(clt.vecClock) != len(vec) {
+		fmt.Println(clt.vecClock)
 		fmt.Println(vec)
 		panic("vector clocks are of different lengths")
 	}
-	for i := 0; i < len(clt.vec_clock); i++ {
-		if vec[i] > clt.vec_clock[i] {
-			clt.vec_clock[i] = vec[i]
+	for i := 0; i < len(clt.vecClock); i++ {
+		if vec[i] > clt.vecClock[i] {
+			clt.vecClock[i] = vec[i]
 		}
 	}
 }
