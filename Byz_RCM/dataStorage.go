@@ -12,7 +12,7 @@ var d = diskv.New(diskv.Options{
 })
 
 type TagVal struct {
-	ts []int
+	ts [NUM_CLIENT]int
 	val string
 }
 
@@ -24,12 +24,12 @@ func isEqual(tv1 TagVal, tv2 TagVal) bool {
 	return vecIsEqual(tv1.ts,tv2.ts)
 }
 
-func vecIsEqual(vec1 []int, vec2[]int) bool{
-	if len(vec1) != len(vec2){
-		return false
-	}
+func vecIsEqual(vec1 [NUM_CLIENT]int, vec2[NUM_CLIENT]int) bool{
+	//if len(vec1) != len(vec2){
+	//	return false
+	//}
 
-	for i := 0; i < len(vec1); i++ {
+	for i := 0; i < NUM_CLIENT; i++ {
 		if vec1[i] != vec2[i]{
 			return false
 		}

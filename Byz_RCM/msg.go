@@ -11,7 +11,7 @@ type Message struct {
 	Id			int
 	Key			string
 	Val			string
-	Vec			[]int
+	Vec			[NUM_CLIENT]int
 	Counter		int
 	Sender		int
 }
@@ -36,7 +36,7 @@ func getMsgFromGob(msgBytes []byte) Message {
 	dec := gob.NewDecoder(&buff)
 	if err := dec.Decode(&msg); err != nil {
 		fmt.Println("Error occurred when decoding messesage in file msg.go", err)
-		return Message{Kind: ERROR, Key: "", Val: "", Id: -1, Counter: -1, Vec: make([]int,1)}
+		return Message{Kind: ERROR, Key: "", Val: "", Id: -1, Counter: -1, Vec: [NUM_CLIENT]int{0,0}}
 	}
 	return msg
 }
