@@ -3,21 +3,23 @@
     $ make
     
 ## Run Server
+on 128.52.179.163
 
-    $ make run0
-or
+    $ make svr0
+on 128.52.179.164
 
-    $ make run1
-or
+    $ make svr1
+on 128.52.179.165
 
-    $ make run2
+    $ make svr2
 
 ## Run client
+on 128.52.179.161
 
-    $ make run3
-or
+    $ make clt0
+on 128.52.179.162
 
-    $ make run4
+    $ make clt1
     
 ## Remove binary
 
