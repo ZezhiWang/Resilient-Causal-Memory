@@ -11,4 +11,4 @@ run3:
 run4:
 	go run *.go -type=client -id=1
 clear:
-	rm const
+	rm client

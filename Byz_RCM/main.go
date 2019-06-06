@@ -30,7 +30,7 @@ func main() {
 	flag.IntVar(&nodeId, "id", 0, "specify the node id")
 	flag.Parse()
 	// read config file
-	config, err := os.Open("config.txt")
+	config, err := os.Open("config_mit.txt")
 	if err != nil {
 		fmt.Print(err)
 		return
