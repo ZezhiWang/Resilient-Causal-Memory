@@ -34,7 +34,7 @@ func getTs(tv TagVal) Message{
 func writeData(tv TagVal) {
 	var res bytes.Buffer
 	var localTs = -1
-	if local,err := d.readData(tv.Key); err == nil {
+	if local,err := readData(tv.Key); err == nil {
 		localTs = local.Ts
 	}
 
