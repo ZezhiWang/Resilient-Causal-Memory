@@ -20,7 +20,15 @@ on 128.52.179.161
 on 128.52.179.162
 
     $ make clt1
+
+## Execute workload
+on client input line
+
+    -> go <number of operation>
+for example
     
+    -> go 10000
+
 ## Remove binary
 
     $ make clear

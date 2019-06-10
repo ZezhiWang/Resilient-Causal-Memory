@@ -62,7 +62,29 @@ func main() {
 	case "client":
 		var node Client
 		node.init()
-		// node.userInput()
-		node.workload(10000)
+		node.userInput()
+		//node.workload(10000)
+	}
+}
+
+func (clt *Client) userInput() {
+	reader := bufio.NewReader(os.Stdin)
+	for {
+		fmt.Print("->")
+		// handle command line input
+		text, _ := reader.ReadString('\n')
+		text = strings.Replace(text, "\n", "", -1)
+		if strings.HasPrefix(text, "go") {
+			input := strings.SplitN(text, " ", 2)
+
+			if num, err := strconv.Atoi(input[1]); err == nil {
+				clt.workload(num)
+			} else {
+				fmt.Println("Err format")
+			}
+		} else {
+			fmt.Println("Ctrl-C to Quit")
+			break
+		}
 	}
 }
