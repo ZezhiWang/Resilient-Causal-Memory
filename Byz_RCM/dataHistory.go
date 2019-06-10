@@ -27,7 +27,7 @@ func getHistFromGob(etyBytes []byte) []TagVal {
 	buff.Write(etyBytes)
 	dec := gob.NewDecoder(&buff)
 	if err := dec.Decode(&etys); err != nil {
-		fmt.Println("Error occurred when decoding Entry", err)
+		fmt.Println("Error occurred when decoding history", err)
 		return make([]TagVal,0)
 	}
 	return etys

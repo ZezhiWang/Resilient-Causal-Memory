@@ -55,13 +55,13 @@ func (clt *Client) read(key string) string {
 	}
 
 	// merge vector clock
-	clt.mergeClock(res.ts)
+	clt.mergeClock(res.Ts)
 
 	delete(clt.hasResp,clt.counter)
 	delete(clt.readBuf,clt.counter)
 
 	clt.counter += 1
-	return res.val
+	return res.Val
 }
 
 func (clt *Client) write(key string, value string) {
@@ -104,7 +104,7 @@ func (clt *Client) recvRESP(dealer *zmq.Socket) (TagVal,bool) {
 		clt.readBuf[msg.Counter][readEty][msg.Sender] = true
 
 		if len(clt.readBuf[msg.Counter][readEty]) > F {
-			return TagVal{val: msg.Val,ts: msg.Vec},true
+			return TagVal{Val: msg.Val, Ts: msg.Vec},true
 		}
 	}
 

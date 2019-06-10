@@ -51,7 +51,7 @@ func (svr *Server) recvRead(key string, id int, counter int, vecI [NUM_CLIENT]in
 
 	// send RESP message to client i
 	ety := readFromDisk(key)
-	msg := Message{Kind: RESP, Counter: counter, Val: ety.val, Vec: ety.ts}
+	msg := Message{Kind: RESP, Counter: counter, Val: ety.Val, Vec: ety.Ts}
 	return &msg
 }
 
@@ -82,7 +82,7 @@ func (svr *Server) recvCheck(key string, val string, id int, counter int, vecI [
 	hist := histFromDisk(key)
 	msg := Message{Kind: ERROR, Key: key, Val: val, Id: id, Counter: counter, Vec: vecI}
 	for _,ety := range hist{
-		if isEqual(ety,TagVal{val:val,ts: vecI}){
+		if isEqual(ety,TagVal{Val: val, Ts: vecI}){
 			msg.Kind = MATCH
 			break
 		}
@@ -138,8 +138,8 @@ func (svr *Server) update() {
 		// update timestamp and write to local memory
 		svr.vecClock[msg.Id] = msg.Vec[msg.Id]
 		mEty := readFromDisk(msg.Key)
-		histAppend(msg.Key,TagVal{val:mEty.val,ts:mEty.ts})
-		storeToDisk(msg.Key,&TagVal{val:msg.Val,ts:svr.vecClock})
+		histAppend(msg.Key,TagVal{Val: mEty.Val, Ts:mEty.Ts})
+		storeToDisk(msg.Key,&TagVal{Val: msg.Val, Ts:svr.vecClock})
 
 		svr.vecClockCond.Broadcast()
 		svr.vecClockCond.L.Unlock()
@@ -165,7 +165,7 @@ func smallerEqualExceptI(vec1 [NUM_CLIENT]int, vec2 [NUM_CLIENT]int, i int) bool
 func (svr *Server) waitUntilServerClockGreaterExceptI(key string, vec [NUM_CLIENT]int, i int) {
 	svr.vecClockCond.L.Lock()
 	ety := readFromDisk(key)
-	for !smallerEqualExceptI(vec, ety.ts, i) {
+	for !smallerEqualExceptI(vec, ety.Ts, i) {
 		svr.vecClockCond.Wait()
 	}
 	svr.vecClockCond.L.Unlock()

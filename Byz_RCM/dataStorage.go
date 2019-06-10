@@ -12,16 +12,16 @@ var d = diskv.New(diskv.Options{
 })
 
 type TagVal struct {
-	ts [NUM_CLIENT]int
-	val string
+	Ts  [NUM_CLIENT]int
+	Val string
 }
 
 func isEqual(tv1 TagVal, tv2 TagVal) bool {
-	if tv1.val != tv2.val{
+	if tv1.Val != tv2.Val {
 		return false
 	}
 
-	return vecIsEqual(tv1.ts,tv2.ts)
+	return vecIsEqual(tv1.Ts,tv2.Ts)
 }
 
 func vecIsEqual(vec1 [NUM_CLIENT]int, vec2[NUM_CLIENT]int) bool{
