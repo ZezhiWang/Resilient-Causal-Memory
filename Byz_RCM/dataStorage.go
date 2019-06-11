@@ -56,7 +56,7 @@ func getEntryFromGob(etyBytes []byte) TagVal {
 	dec := gob.NewDecoder(&buff)
 	if err := dec.Decode(&ety); err != nil {
 		fmt.Println("Error occurred when decoding Entry", err)
-		return TagVal{}
+		return TagVal{Ts: [2]int{0,0}, Val: ""}
 	}
 	return ety
 }
@@ -69,6 +69,8 @@ func storeToDisk(key string, ety *TagVal){
 }
 
 func readFromDisk(key string) TagVal {
-	b,_ := d.Read(key)
-	return getEntryFromGob(b)
+	if b, err := d.Read(key); err == nil {
+		return getEntryFromGob(b)
+	}
+	return TagVal{Ts: [2]int{0,0}, Val: ""}
 }

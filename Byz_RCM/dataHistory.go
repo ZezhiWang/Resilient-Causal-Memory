@@ -28,7 +28,7 @@ func getHistFromGob(etyBytes []byte) []TagVal {
 	dec := gob.NewDecoder(&buff)
 	if err := dec.Decode(&etys); err != nil {
 		fmt.Println("Error occurred when decoding history", err)
-		return make([]TagVal,0)
+		return []TagVal{}
 	}
 	return etys
 }
@@ -41,8 +41,10 @@ func histToDisk(key string, etys *[]TagVal){
 }
 
 func histFromDisk(key string) []TagVal {
-	b,_ := h.Read(key)
-	return getHistFromGob(b)
+	if b,err := h.Read(key); err == nil {
+		return getHistFromGob(b)
+	}
+	return []TagVal{}
 }
 
 func histAppend(key string, tv TagVal) {
