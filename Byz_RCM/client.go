@@ -141,6 +141,7 @@ func (clt *Client) recvACK(dealer *zmq.Socket) {
 			clt.writeBuf[msg.Counter] = make(map[int]bool)
 		}
 		clt.writeBuf[msg.Counter][msg.Sender] = true
+		fmt.Println("client", clt.writeBuf[msg.Counter])
 	}
 }
 

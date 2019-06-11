@@ -58,7 +58,7 @@ func (svr *Server) recvRead(key string, id int, counter int, vecI [NUM_CLIENT]in
 
 // Actions to take if server receives WRITE message
 func (svr *Server) recvWrite(key string, val string, id int, counter int, vecI [NUM_CLIENT]int) *Message{
-	fmt.Println("recv write", vecI)
+	fmt.Println(nodeId, "recv write", vecI, "from client", id)
 	// broadcast UPDATE message
 	msg := Message{Kind: UPDATE, Key: key, Val: val, Id: id, Counter: counter, Vec: vecI, Sender: nodeId}
 
@@ -94,7 +94,7 @@ func (svr *Server) recvCheck(key string, val string, id int, counter int, vecI [
 
 // Actions to take if server receives UPDATE message
 func (svr *Server) recvUpdate(key string, val string, id int, counter int, vecI [NUM_CLIENT]int, senderId int) {
-	fmt.Println("recv update", vecI)
+	fmt.Println(nodeId, "recv update", vecI, "from svr", senderId)
 	entry := WitnessEntry{key: key, val: val, id: id, counter: counter}
 
 	// if this is first UPDATE msg from sender
@@ -125,13 +125,13 @@ func (svr *Server) recvUpdate(key string, val string, id int, counter int, vecI 
 
 // infinitely often update the local storage
 func (svr *Server) update() {
-	fmt.Println("in update")
+	fmt.Println(nodeId, "in update")
 	ety := svr.queue.Dequeue()
 	if ety != nil {
 		svr.vecClockCond.L.Lock()
 		for svr.vecClock[ety.Id] != ety.Vec[ety.Id]-1 || !smallerEqualExceptI(ety.Vec, svr.vecClock, ety.Id) {
-			fmt.Println("svr:", svr.vecClock, "Q:", ety.Vec)
 			if svr.vecClock[ety.Id] > ety.Vec[ety.Id]-1 {
+				fmt.Println(nodeId,"end update")
 				return
 			}
 			svr.vecClockCond.Wait()
@@ -141,6 +141,7 @@ func (svr *Server) update() {
 		mEty := readFromDisk(ety.Key)
 		histAppend(ety.Key,TagVal{Val: mEty.Val, Ts:mEty.Ts})
 		storeToDisk(ety.Key,&TagVal{Val: ety.Val, Ts:svr.vecClock})
+		fmt.Println(nodeId, "update to disk")
 
 		svr.vecClockCond.Broadcast()
 		svr.vecClockCond.L.Unlock()
@@ -167,7 +168,8 @@ func (svr *Server) waitUntilServerClockGreaterExceptI(key string, vec [NUM_CLIEN
 	svr.vecClockCond.L.Lock()
 	ety := readFromDisk(key)
 	for !smallerEqualExceptI(vec, ety.Ts, i) {
-		fmt.Println("client:", vec, "disk:", ety.Ts)
+		ety = readFromDisk(key)
+		fmt.Println(nodeId, "client:", vec, "disk:", ety.Ts)
 		svr.vecClockCond.Wait()
 	}
 	svr.vecClockCond.L.Unlock()
