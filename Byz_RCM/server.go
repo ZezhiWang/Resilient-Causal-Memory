@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	zmq "github.com/pebbe/zmq4"
 	"sync"
 )
@@ -57,6 +58,7 @@ func (svr *Server) recvRead(key string, id int, counter int, vecI [NUM_CLIENT]in
 
 // Actions to take if server receives WRITE message
 func (svr *Server) recvWrite(key string, val string, id int, counter int, vecI [NUM_CLIENT]int) *Message{
+	fmt.Println("recv write", vecI)
 	// broadcast UPDATE message
 	msg := Message{Kind: UPDATE, Key: key, Val: val, Id: id, Counter: counter, Vec: vecI, Sender: nodeId}
 
@@ -92,17 +94,14 @@ func (svr *Server) recvCheck(key string, val string, id int, counter int, vecI [
 
 // Actions to take if server receives UPDATE message
 func (svr *Server) recvUpdate(key string, val string, id int, counter int, vecI [NUM_CLIENT]int, senderId int) {
+	fmt.Println("recv update", vecI)
 	entry := WitnessEntry{key: key, val: val, id: id, counter: counter}
 
 	// if this is first UPDATE msg from sender
-	if _, isIn := svr.witness[entry]; isIn {
-		if _, hasReceived := svr.witness[entry][senderId]; !hasReceived {
-			svr.witness[entry][senderId] = true
-		}
-	} else {
+	if _, isIn := svr.witness[entry]; !isIn {
 		svr.witness[entry] = make(map[int]bool)
-		svr.witness[entry][senderId] = true
 	}
+	svr.witness[entry][senderId] = true
 
 	// if received F + 1 unique UPDATE msg
 	if len(svr.witness[entry]) == F+1 {
@@ -126,20 +125,22 @@ func (svr *Server) recvUpdate(key string, val string, id int, counter int, vecI 
 
 // infinitely often update the local storage
 func (svr *Server) update() {
-	msg := svr.queue.Dequeue()
-	if msg != nil {
+	fmt.Println("in update")
+	ety := svr.queue.Dequeue()
+	if ety != nil {
 		svr.vecClockCond.L.Lock()
-		for svr.vecClock[msg.Id] != msg.Vec[msg.Id]-1 || !smallerEqualExceptI(msg.Vec, svr.vecClock, msg.Id) {
-			if svr.vecClock[msg.Id] > msg.Vec[msg.Id]-1 {
+		for svr.vecClock[ety.Id] != ety.Vec[ety.Id]-1 || !smallerEqualExceptI(ety.Vec, svr.vecClock, ety.Id) {
+			fmt.Println("svr:", svr.vecClock, "Q:", ety.Vec)
+			if svr.vecClock[ety.Id] > ety.Vec[ety.Id]-1 {
 				return
 			}
 			svr.vecClockCond.Wait()
 		}
 		// update timestamp and write to local memory
-		svr.vecClock[msg.Id] = msg.Vec[msg.Id]
-		mEty := readFromDisk(msg.Key)
-		histAppend(msg.Key,TagVal{Val: mEty.Val, Ts:mEty.Ts})
-		storeToDisk(msg.Key,&TagVal{Val: msg.Val, Ts:svr.vecClock})
+		svr.vecClock[ety.Id] += 1
+		mEty := readFromDisk(ety.Key)
+		histAppend(ety.Key,TagVal{Val: mEty.Val, Ts:mEty.Ts})
+		storeToDisk(ety.Key,&TagVal{Val: ety.Val, Ts:svr.vecClock})
 
 		svr.vecClockCond.Broadcast()
 		svr.vecClockCond.L.Unlock()
@@ -166,6 +167,7 @@ func (svr *Server) waitUntilServerClockGreaterExceptI(key string, vec [NUM_CLIEN
 	svr.vecClockCond.L.Lock()
 	ety := readFromDisk(key)
 	for !smallerEqualExceptI(vec, ety.Ts, i) {
+		fmt.Println("client:", vec, "disk:", ety.Ts)
 		svr.vecClockCond.Wait()
 	}
 	svr.vecClockCond.L.Unlock()
