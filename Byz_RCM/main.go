@@ -75,16 +75,19 @@ func (clt *Client) userInput() {
 		text, _ := reader.ReadString('\n')
 		text = strings.Replace(text, "\n", "", -1)
 		if strings.HasPrefix(text, "go") {
-			input := strings.SplitN(text, " ", 2)
+			if strings.HasPrefix(text,"go "){
+				input := strings.SplitN(text, " ", 2)
 
-			if num, err := strconv.Atoi(input[1]); err == nil {
-				clt.workload(num)
+				if num, err := strconv.Atoi(input[1]); err == nil {
+					clt.workload(num)
+				} else {
+					clt.workload(10000)
+				}
 			} else {
-				fmt.Println("Err format")
+				clt.workload(10000)
 			}
 		} else {
 			fmt.Println("Ctrl-C to Quit")
-			break
 		}
 	}
 }
