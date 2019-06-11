@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	zmq "github.com/pebbe/zmq4"
 	"sync"
 )
@@ -56,7 +55,7 @@ func (svr *Server) recvRead(key string, id int, counter int, vecI [NUM_CLIENT]in
 
 // Actions to take if server receives WRITE message
 func (svr *Server) recvWrite(key string, val string, id int, counter int, vecI [NUM_CLIENT]int) *Message{
-	fmt.Println(nodeId, "recv write", vecI, "from client", id)
+	//fmt.Println(nodeId, "recv write", vecI, "from client", id)
 	// broadcast UPDATE message
 	msg := Message{Kind: UPDATE, Key: key, Val: val, Id: id, Counter: counter, Vec: vecI, Sender: nodeId}
 
@@ -66,7 +65,7 @@ func (svr *Server) recvWrite(key string, val string, id int, counter int, vecI [
 	if _,isIn := svr.hasSent[entry]; !isIn {
 		svr.publish(&msg)
 		svr.hasSent[entry] = true
-		fmt.Println(nodeId, "sent update of counter ", counter, "in recv write")
+		//fmt.Println(nodeId, "sent update of counter ", counter, "in recv write")
 	}
 	svr.hasSentLock.Unlock()
 
@@ -75,7 +74,7 @@ func (svr *Server) recvWrite(key string, val string, id int, counter int, vecI [
 
 	// send ACK message to client i
 	msg = Message{Kind: ACK, Counter: counter, Vec: [NUM_CLIENT]int{}, Sender: nodeId}
-	fmt.Println(nodeId, "reply", msg)
+	//fmt.Println(nodeId, "reply", msg)
 	return &msg
 }
 
@@ -94,7 +93,7 @@ func (svr *Server) recvCheck(key string, val string, id int, counter int, vecI [
 
 // Actions to take if server receives UPDATE message
 func (svr *Server) recvUpdate(key string, val string, id int, counter int, vecI [NUM_CLIENT]int, senderId int) {
-	fmt.Println(nodeId, "recv update", vecI, "from svr", senderId)
+	//fmt.Println(nodeId, "recv update", vecI, "from svr", senderId)
 	entry := WitnessEntry{id: id, counter: counter}
 
 	// if this is first UPDATE msg from sender
@@ -111,7 +110,7 @@ func (svr *Server) recvUpdate(key string, val string, id int, counter int, vecI 
 			msg := Message{Kind: UPDATE, Key: key, Val: val, Id: id, Counter: counter, Vec: vecI, Sender: nodeId}
 			svr.publish(&msg)
 			svr.hasSent[entry] = true
-			fmt.Println(nodeId, "sent update of counter ", counter, "in recv update")
+			//fmt.Println(nodeId, "sent update of counter ", counter, "in recv update")
 		}
 		svr.hasSentLock.Unlock()
 	}
@@ -126,13 +125,13 @@ func (svr *Server) recvUpdate(key string, val string, id int, counter int, vecI 
 
 // infinitely often update the local storage
 func (svr *Server) update() {
-	fmt.Println(nodeId, "in update")
+	//fmt.Println(nodeId, "in update")
 	ety := svr.queue.Dequeue()
 	if ety != nil {
 		svr.vecClockCond.L.Lock()
 		for svr.vecClock[ety.Id] != ety.Vec[ety.Id]-1 || !smallerEqualExceptI(ety.Vec, svr.vecClock, ety.Id) {
 			if svr.vecClock[ety.Id] > ety.Vec[ety.Id]-1 {
-				fmt.Println(nodeId,"end update")
+				//fmt.Println(nodeId,"end update")
 				return
 			}
 			svr.vecClockCond.Wait()
@@ -142,7 +141,7 @@ func (svr *Server) update() {
 		mEty := readFromDisk(ety.Key)
 		histAppend(ety.Key,TagVal{Val: mEty.Val, Ts:mEty.Ts})
 		storeToDisk(ety.Key,&TagVal{Val: ety.Val, Ts:svr.vecClock})
-		fmt.Println(nodeId, "update to disk")
+		//fmt.Println(nodeId, "update to disk")
 
 		svr.vecClockCond.Broadcast()
 		svr.vecClockCond.L.Unlock()
@@ -169,9 +168,9 @@ func (svr *Server) waitUntilServerClockGreaterExceptI(key string, vec [NUM_CLIEN
 	svr.vecClockCond.L.Lock()
 	ety := readFromDisk(key)
 	for !smallerEqualExceptI(vec, ety.Ts, i) {
-		ety = readFromDisk(key)
-		fmt.Println(nodeId, "client:", vec, "disk:", ety.Ts)
 		svr.vecClockCond.Wait()
+		ety = readFromDisk(key)
+		//fmt.Println(nodeId, "client:", vec, "disk:", ety.Ts)
 	}
 	svr.vecClockCond.L.Unlock()
 }
