@@ -7,8 +7,6 @@ import (
 )
 
 type WitnessEntry struct {
-	key 	string
-	val 	string
 	id      int
 	counter int
 }
@@ -77,6 +75,7 @@ func (svr *Server) recvWrite(key string, val string, id int, counter int, vecI [
 
 	// send ACK message to client i
 	msg = Message{Kind: ACK, Counter: counter, Vec: [NUM_CLIENT]int{}, Sender: nodeId}
+	fmt.Println(nodeId, "reply", msg)
 	return &msg
 }
 
@@ -96,7 +95,7 @@ func (svr *Server) recvCheck(key string, val string, id int, counter int, vecI [
 // Actions to take if server receives UPDATE message
 func (svr *Server) recvUpdate(key string, val string, id int, counter int, vecI [NUM_CLIENT]int, senderId int) {
 	fmt.Println(nodeId, "recv update", vecI, "from svr", senderId)
-	entry := WitnessEntry{key: key, val: val, id: id, counter: counter}
+	entry := WitnessEntry{id: id, counter: counter}
 
 	// if this is first UPDATE msg from sender
 	if _, isIn := svr.witness[entry]; !isIn {
