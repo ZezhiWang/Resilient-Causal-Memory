@@ -52,7 +52,7 @@ func (svr *Server) recvRead(key string, id int, counter int, vecI [NUM_CLIENT]in
 
 	// send RESP message to client i
 	ety := readFromDisk(key)
-	msg := Message{Kind: RESP, Counter: counter, Val: ety.Val, Vec: ety.Ts}
+	msg := Message{Kind: RESP, Counter: counter, Val: ety.Val, Vec: ety.Ts, Sender: nodeId}
 	return &msg
 }
 
@@ -68,6 +68,7 @@ func (svr *Server) recvWrite(key string, val string, id int, counter int, vecI [
 	if _,isIn := svr.hasSent[entry]; !isIn {
 		svr.publish(&msg)
 		svr.hasSent[entry] = true
+		fmt.Println(nodeId, "sent update of counter ", counter, "in recv write")
 	}
 	svr.hasSentLock.Unlock()
 
@@ -75,14 +76,14 @@ func (svr *Server) recvWrite(key string, val string, id int, counter int, vecI [
 	svr.waitUntilServerClockGreaterExceptI(key, vecI, 999999)
 
 	// send ACK message to client i
-	msg = Message{Kind: ACK, Counter: counter, Vec: [NUM_CLIENT]int{}}
+	msg = Message{Kind: ACK, Counter: counter, Vec: [NUM_CLIENT]int{}, Sender: nodeId}
 	return &msg
 }
 
 // Actions to take if server receives CHECK message
 func (svr *Server) recvCheck(key string, val string, id int, counter int, vecI [NUM_CLIENT]int) *Message{
 	hist := histFromDisk(key)
-	msg := Message{Kind: ERROR, Key: key, Val: val, Id: id, Counter: counter, Vec: vecI}
+	msg := Message{Kind: ERROR, Key: key, Val: val, Id: id, Counter: counter, Vec: vecI, Sender: nodeId}
 	for _,ety := range hist{
 		if isEqual(ety,TagVal{Val: val, Ts: vecI}){
 			msg.Kind = MATCH
@@ -111,6 +112,7 @@ func (svr *Server) recvUpdate(key string, val string, id int, counter int, vecI 
 			msg := Message{Kind: UPDATE, Key: key, Val: val, Id: id, Counter: counter, Vec: vecI, Sender: nodeId}
 			svr.publish(&msg)
 			svr.hasSent[entry] = true
+			fmt.Println(nodeId, "sent update of counter ", counter, "in recv update")
 		}
 		svr.hasSentLock.Unlock()
 	}
