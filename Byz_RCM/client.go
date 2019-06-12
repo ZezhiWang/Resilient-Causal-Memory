@@ -114,7 +114,7 @@ func (clt *Client) recvRESP(dealer *zmq.Socket) (TagVal,bool) {
 		}
 
 		if _,isIn := clt.hasResp[msg.Counter][msg.Sender]; !isIn {
-			if !smallerEqualExceptI(msg.Ts,clt.vecClock,99999){
+			if smallerEqualExceptI(clt.vecClock, msg.Ts, 99999){
 				msg.Kind = CHECK
 				zmqBroadcast(&msg,dealer)
 			}
