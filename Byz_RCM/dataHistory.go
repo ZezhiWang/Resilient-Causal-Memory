@@ -48,8 +48,8 @@ func histFromDisk(key string) []TagVal {
 	return []TagVal{}
 }
 
-func histAppend(key string, tv TagVal) {
+func histAppend(key string, tv *TagVal) {
 	hist := histFromDisk(key)
-	hist = append(hist,tv)
+	hist = append(hist,*tv)
 	histToDisk(key,&hist)
 }

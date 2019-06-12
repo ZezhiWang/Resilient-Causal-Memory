@@ -67,6 +67,7 @@ func storeToDisk(key string, ety *TagVal){
 	if err := d.Write(key,b); err != nil{
 		fmt.Println("cannot write")
 	}
+	histAppend(key, ety)
 }
 
 func readFromDisk(key string) TagVal {

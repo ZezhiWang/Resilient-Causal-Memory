@@ -42,7 +42,7 @@ func (clt *Client) read(key string) string {
 	var shouldBreak bool
 	dealer := createDealerSocket()
 	defer dealer.Close()
-	msg := Message{Kind: READ, Key: key, Id: nodeId, Counter: clt.counter, Vec: clt.vecClock}
+	msg := Message{Kind: READ, Key: key, Id: nodeId, Counter: clt.counter, Ts: clt.vecClock}
 	zmqBroadcast(&msg, dealer)
 	fmt.Printf("Client %d broadcasted msg READ\n", nodeId)
 
@@ -68,7 +68,7 @@ func (clt *Client) write(key string, value string) {
 	dealer := createDealerSocket()
 	defer dealer.Close()
 	clt.vecClock[nodeId] += 1
-	msg := Message{Kind: WRITE, Key: key, Val: value, Id: nodeId, Counter: clt.counter, Vec: clt.vecClock}
+	msg := Message{Kind: WRITE, Key: key, Val: value, Id: nodeId, Counter: clt.counter, Ts: clt.vecClock}
 	zmqBroadcast(&msg, dealer)
 	fmt.Printf("Client %d broadcasted msg WRITE\n", nodeId)
 
@@ -104,7 +104,7 @@ func (clt *Client) recvRESP(dealer *zmq.Socket) (TagVal,bool) {
 		clt.readBuf[msg.Counter][readEty][msg.Sender] = true
 
 		if len(clt.readBuf[msg.Counter][readEty]) > F {
-			return TagVal{Val: msg.Val, Ts: msg.Vec},true
+			return TagVal{Val: msg.Val, Ts: msg.Ts},true
 		}
 	}
 
@@ -114,13 +114,12 @@ func (clt *Client) recvRESP(dealer *zmq.Socket) (TagVal,bool) {
 		}
 
 		if _,isIn := clt.hasResp[msg.Counter][msg.Sender]; !isIn {
-			if smallerEqualExceptI(msg.Vec,clt.vecClock,99999){
+			if !smallerEqualExceptI(msg.Ts,clt.vecClock,99999){
 				msg.Kind = CHECK
 				zmqBroadcast(&msg,dealer)
 			}
-		} else {
-			clt.hasResp[msg.Counter][msg.Sender] = true
 		}
+		clt.hasResp[msg.Counter][msg.Sender] = true
 	}
 
 	return TagVal{[NUM_CLIENT]int{},""},false

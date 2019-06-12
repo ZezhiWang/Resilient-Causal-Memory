@@ -51,7 +51,7 @@ func (svr *Server) recvRead(key string, id int, counter int, vecI [NUM_CLIENT]in
 
 	// send RESP message to client i
 	ety := readFromDisk(key)
-	msg := Message{Kind: RESP, Counter: counter, Val: ety.Val, Vec: ety.Ts, Sender: nodeId}
+	msg := Message{Kind: RESP, Counter: counter, Val: ety.Val, Vec: ety.Ts, Ts: svr.vecClock, Sender: nodeId}
 	return &msg
 }
 
@@ -59,7 +59,7 @@ func (svr *Server) recvRead(key string, id int, counter int, vecI [NUM_CLIENT]in
 func (svr *Server) recvWrite(key string, val string, id int, counter int, vecI [NUM_CLIENT]int) *Message{
 	//fmt.Println(nodeId, "recv write", vecI, "from client", id)
 	// broadcast UPDATE message
-	msg := Message{Kind: UPDATE, Key: key, Val: val, Id: id, Counter: counter, Vec: vecI, Sender: nodeId}
+	msg := Message{Kind: UPDATE, Key: key, Val: val, Id: id, Counter: counter, Ts: vecI, Sender: nodeId}
 
 	entry := WitnessEntry{id: id, counter: counter}
 
@@ -75,15 +75,15 @@ func (svr *Server) recvWrite(key string, val string, id int, counter int, vecI [
 	svr.waitUntilServerClockGreaterExceptI(key, vecI, 999999)
 
 	// send ACK message to client i
-	msg = Message{Kind: ACK, Counter: counter, Vec: [NUM_CLIENT]int{}, Sender: nodeId}
+	msg = Message{Kind: ACK, Counter: counter, Sender: nodeId}
 	//fmt.Println(nodeId, "reply", msg)
 	return &msg
 }
 
 // Actions to take if server receives CHECK message
-func (svr *Server) recvCheck(key string, val string, id int, counter int, vecI [NUM_CLIENT]int) *Message{
+func (svr *Server) recvCheck(key string, val string, counter int, vecI [NUM_CLIENT]int) *Message{
 	hist := histFromDisk(key)
-	msg := Message{Kind: ERROR, Key: key, Val: val, Id: id, Counter: counter, Vec: vecI, Sender: nodeId}
+	msg := Message{Kind: ERROR, Val: val, Ts: svr.vecClock, Counter: counter, Sender: nodeId}
 	for _,ety := range hist{
 		if isEqual(ety,TagVal{Val: val, Ts: vecI}){
 			msg.Kind = MATCH
@@ -109,7 +109,7 @@ func (svr *Server) recvUpdate(key string, val string, id int, counter int, vecI 
 		// Publish UPDATE
 		svr.hasSentLock.Lock()
 		if _, isIn := svr.hasSent[entry]; !isIn {
-			msg := Message{Kind: UPDATE, Key: key, Val: val, Id: id, Counter: counter, Vec: vecI, Sender: nodeId}
+			msg := Message{Kind: UPDATE, Key: key, Val: val, Id: id, Counter: counter, Ts: vecI, Sender: nodeId}
 			svr.publish(&msg)
 			svr.hasSent[entry] = true
 			//fmt.Println(nodeId, "sent update of counter ", counter, "in recv update")
@@ -140,8 +140,6 @@ func (svr *Server) update() {
 		}
 		// update timestamp and write to local memory
 		svr.vecClock[ety.Id] += 1
-		mEty := readFromDisk(ety.Key)
-		histAppend(ety.Key,TagVal{Val: mEty.Val, Ts:mEty.Ts})
 		storeToDisk(ety.Key,&TagVal{Val: ety.Val, Ts:svr.vecClock})
 		//fmt.Println(nodeId, "update to disk")
 
@@ -170,7 +168,7 @@ func (svr *Server) waitUntilServerClockGreaterExceptI(key string, vec [NUM_CLIEN
 	svr.vecClockCond.L.Lock()
 	ety := readFromDisk(key)
 	for !smallerEqualExceptI(vec, ety.Ts, i) {
-		fmt.Println(nodeId, "client:", vec, "disk:", ety.Ts)
+		fmt.Println("WRITE", nodeId, "client:", vec, "disk:", ety.Ts)
 		svr.vecClockCond.Wait()
 		ety = readFromDisk(key)
 	}
@@ -180,7 +178,7 @@ func (svr *Server) waitUntilServerClockGreaterExceptI(key string, vec [NUM_CLIEN
 func (svr *Server) waitUntilServerClockGreater(vec [NUM_CLIENT]int) {
 	svr.vecClockCond.L.Lock()
 	for !smallerEqualExceptI(vec, svr.vecClock, 999999) {
-		fmt.Println(nodeId, "client:", vec, "disk:", svr.vecClock)
+		fmt.Println("READ", nodeId, "client:", vec, "disk:", svr.vecClock)
 		svr.vecClockCond.Wait()
 	}
 	svr.vecClockCond.L.Unlock()
