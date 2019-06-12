@@ -5,9 +5,10 @@ import (
 	"encoding/gob"
 	"fmt"
 	"github.com/peterbourgon/diskv"
+	"strconv"
 )
 var h = diskv.New(diskv.Options{
-	BasePath:     "hist",
+	BasePath:     "hist" + strconv.Itoa(nodeId),
 })
 
 func getGobFromHist(etys *[]TagVal) []byte {

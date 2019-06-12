@@ -5,10 +5,11 @@ import (
 	"encoding/gob"
 	"fmt"
 	"github.com/peterbourgon/diskv"
+	"strconv"
 )
 
 var d = diskv.New(diskv.Options{
-	BasePath:     "data",
+	BasePath:     "data" + strconv.Itoa(nodeId),
 })
 
 type TagVal struct {
