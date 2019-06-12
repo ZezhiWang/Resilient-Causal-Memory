@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	zmq "github.com/pebbe/zmq4"
 	"sync"
 )
@@ -45,7 +46,8 @@ func (svr *Server) init(pubPort string) {
 // Actions to take if server receives READ message
 func (svr *Server) recvRead(key string, id int, counter int, vecI [NUM_CLIENT]int) *Message {
 	// wait until M[k].t is greater than t_i
-	svr.waitUntilServerClockGreaterExceptI(key, vecI, 999999)
+	//svr.waitUntilServerClockGreaterExceptI(key, vecI, 999999)
+	svr.waitUntilServerClockGreater(vecI)
 
 	// send RESP message to client i
 	ety := readFromDisk(key)
@@ -168,9 +170,18 @@ func (svr *Server) waitUntilServerClockGreaterExceptI(key string, vec [NUM_CLIEN
 	svr.vecClockCond.L.Lock()
 	ety := readFromDisk(key)
 	for !smallerEqualExceptI(vec, ety.Ts, i) {
+		fmt.Println(nodeId, "client:", vec, "disk:", ety.Ts)
 		svr.vecClockCond.Wait()
 		ety = readFromDisk(key)
-		//fmt.Println(nodeId, "client:", vec, "disk:", ety.Ts)
+	}
+	svr.vecClockCond.L.Unlock()
+}
+
+func (svr *Server) waitUntilServerClockGreater(vec [NUM_CLIENT]int) {
+	svr.vecClockCond.L.Lock()
+	for !smallerEqualExceptI(vec, svr.vecClock, 999999) {
+		fmt.Println(nodeId, "client:", vec, "disk:", svr.vecClock)
+		svr.vecClockCond.Wait()
 	}
 	svr.vecClockCond.L.Unlock()
 }
