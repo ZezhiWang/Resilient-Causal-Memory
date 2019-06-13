@@ -80,7 +80,7 @@ func (svr *Server) createRep(input Message) *Message {
 		case WRITE:
 			output = svr.recvWrite(input.Key, input.Val, input.Id, input.Counter, input.Ts)
 		case CHECK:
-			output = svr.recvCheck(input.Key, input.Val, input.Counter, input.Vec)
+			output = svr.recvCheck(input.Key, input.Val, input.Counter, input.Ts)
 	}
 	return output
 }

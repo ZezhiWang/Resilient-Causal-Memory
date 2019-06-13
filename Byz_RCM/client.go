@@ -36,6 +36,7 @@ func (clt *Client) init() {
 	clt.hasResp = make(map[int]map[int]bool)
 
 	clt.tvChan = make(chan TagVal, 1)
+	clt.vecByKey = make(map[string][NUM_CLIENT]int)
 }
 
 func (clt *Client) read(key string) string {
