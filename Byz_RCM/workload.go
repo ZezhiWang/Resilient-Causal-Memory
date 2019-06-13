@@ -84,6 +84,6 @@ func (clt *Client) workload(num int){
 	fmt.Printf("Thorough put: %f op/sec\n", float64(numRead+numWrite) / float64(totalTime.Seconds()))
 	fmt.Printf("Avg write time: %f us\n", float64(WTotal)/float64(numWrite))
 	fmt.Printf("Avg read time: %f us\n", float64(RTotal)/float64(numRead))
-	fmt.Printf("95-th percentile for write time: %d us\n", writeTimes[int(float64(numWrite) * 0.95)])
-	fmt.Printf("95-th percentile for read time: %d us\n", readTimes[int(float64(numRead) * 0.95)])
+	fmt.Printf("95-th percentile for write time: %d us\n", writeTimes[int(float64(numWrite-1) * 0.95)])
+	fmt.Printf("95-th percentile for read time: %d us\n", readTimes[int(float64(numRead-1) * 0.95)])
 }

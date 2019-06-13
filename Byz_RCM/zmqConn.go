@@ -43,7 +43,6 @@ func createSubscriberSocket() *zmq.Socket {
 
 func (svr *Server) publish(msg *Message) {
 	b := getGobFromMsg(msg)
-	// publisher.Send(FILTER, zmq.SNDMORE)
 	svr.publisherLock.Lock()
 	_, err := svr.publisher.SendBytes(b,0)
 	svr.publisherLock.Unlock()

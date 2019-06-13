@@ -17,6 +17,7 @@ type Client struct {
 	readBuf  map[int]map[ReadBufEntry]map[int]bool
 	hasResp  map[int]map[int]bool
 	tvChan   chan TagVal
+	vecByKey map[string][NUM_CLIENT]int
 }
 
 func (clt *Client) init() {
@@ -61,12 +62,14 @@ func (clt *Client) read(key string) string {
 	delete(clt.readBuf,clt.counter)
 
 	clt.counter += 1
+	clt.updateVecMap(key)
 	return res.Val
 }
 
 func (clt *Client) write(key string, value string) {
 	dealer := createDealerSocket()
 	defer dealer.Close()
+
 	clt.vecClock[nodeId] += 1
 	msg := Message{Kind: WRITE, Key: key, Val: value, Id: nodeId, Counter: clt.counter, Ts: clt.vecClock}
 	zmqBroadcast(&msg, dealer)
@@ -81,6 +84,7 @@ func (clt *Client) write(key string, value string) {
 
 	delete(clt.writeBuf,clt.counter)
 	clt.counter += 1
+	clt.updateVecMap(key)
 }
 
 // Actions to take if receive RESP message
@@ -97,7 +101,7 @@ func (clt *Client) recvRESP(dealer *zmq.Socket) (TagVal,bool) {
 			clt.readBuf[msg.Counter] = make(map[ReadBufEntry]map[int]bool)
 		}
 
-		readEty := ReadBufEntry{val: msg.Val, vec: msg.Vec}
+		readEty := ReadBufEntry{val: msg.Val, vec: msg.Ts}
 		if _,isIn := clt.readBuf[msg.Counter][readEty]; !isIn{
 			clt.readBuf[msg.Counter][readEty] = make(map[int]bool)
 		}
@@ -114,7 +118,7 @@ func (clt *Client) recvRESP(dealer *zmq.Socket) (TagVal,bool) {
 		}
 
 		if _,isIn := clt.hasResp[msg.Counter][msg.Sender]; !isIn {
-			if smallerEqualExceptI(clt.vecClock, msg.Ts, 99999){
+			if keyVec, isIn := clt.vecByKey[msg.Key]; !isIn || (isIn && smallerEqualExceptI(keyVec, msg.Ts, 99999)) {
 				msg.Kind = CHECK
 				zmqBroadcast(&msg,dealer)
 			}
@@ -155,5 +159,11 @@ func (clt *Client) mergeClock(vec [NUM_CLIENT]int) {
 		if vec[i] > clt.vecClock[i] {
 			clt.vecClock[i] = vec[i]
 		}
+	}
+}
+
+func (clt *Client) updateVecMap(key string){
+	if old,isIn := clt.vecByKey[key]; !isIn || (isIn && !smallerEqualExceptI(clt.vecClock, old, 99999)){
+		clt.vecByKey[key] = clt.vecClock
 	}
 }

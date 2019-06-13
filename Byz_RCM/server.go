@@ -51,7 +51,7 @@ func (svr *Server) recvRead(key string, id int, counter int, vecI [NUM_CLIENT]in
 
 	// send RESP message to client i
 	ety := readFromDisk(key)
-	msg := Message{Kind: RESP, Counter: counter, Val: ety.Val, Vec: ety.Ts, Ts: svr.vecClock, Sender: nodeId}
+	msg := Message{Kind: RESP, Counter: counter, Val: ety.Val, Ts: ety.Ts, Sender: nodeId}
 	return &msg
 }
 
@@ -72,7 +72,8 @@ func (svr *Server) recvWrite(key string, val string, id int, counter int, vecI [
 	svr.hasSentLock.Unlock()
 
 	// wait until M[k].t is greater than t_i
-	svr.waitUntilServerClockGreaterExceptI(key, vecI, 999999)
+	//svr.waitUntilServerClockGreaterExceptI(key, vecI, 999999)
+	svr.waitUntilServerClockGreater(vecI)
 
 	// send ACK message to client i
 	msg = Message{Kind: ACK, Counter: counter, Sender: nodeId}
@@ -140,7 +141,7 @@ func (svr *Server) update() {
 		}
 		// update timestamp and write to local memory
 		svr.vecClock[ety.Id] += 1
-		storeToDisk(ety.Key,&TagVal{Val: ety.Val, Ts:svr.vecClock})
+		storeToDisk(ety.Key,&TagVal{Val: ety.Val, Ts:ety.Vec})
 		//fmt.Println(nodeId, "update to disk")
 
 		svr.vecClockCond.Broadcast()
@@ -163,17 +164,17 @@ func smallerEqualExceptI(vec1 [NUM_CLIENT]int, vec2 [NUM_CLIENT]int, i int) bool
 	}
 	return true
 }
-
-func (svr *Server) waitUntilServerClockGreaterExceptI(key string, vec [NUM_CLIENT]int, i int) {
-	svr.vecClockCond.L.Lock()
-	ety := readFromDisk(key)
-	for !smallerEqualExceptI(vec, ety.Ts, i) {
-		fmt.Println("WRITE", nodeId, "client:", vec, "disk:", ety.Ts)
-		svr.vecClockCond.Wait()
-		ety = readFromDisk(key)
-	}
-	svr.vecClockCond.L.Unlock()
-}
+//
+//func (svr *Server) waitUntilServerClockGreaterExceptI(key string, vec [NUM_CLIENT]int, i int) {
+//	svr.vecClockCond.L.Lock()
+//	ety := readFromDisk(key)
+//	for !smallerEqualExceptI(vec, ety.Ts, i) {
+//		fmt.Println("WRITE", nodeId, "client:", vec, "disk:", ety.Ts)
+//		svr.vecClockCond.Wait()
+//		ety = readFromDisk(key)
+//	}
+//	svr.vecClockCond.L.Unlock()
+//}
 
 func (svr *Server) waitUntilServerClockGreater(vec [NUM_CLIENT]int) {
 	svr.vecClockCond.L.Lock()
