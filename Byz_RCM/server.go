@@ -85,8 +85,10 @@ func (svr *Server) recvWrite(key string, val string, id int, counter int, vecI [
 func (svr *Server) recvCheck(key string, val string, counter int, vecI [NUM_CLIENT]int) *Message{
 	// hist := histFromDisk(key)
 	msg := Message{Kind: ERROR, Val: val, Ts: svr.vecClock, Counter: counter, Sender: nodeId}
-
-	if hist, isIn := h[key]; isIn{
+        histLock.Lock()
+        hist,isIn := h[key]
+        histLock.Unlock()
+	if isIn{
 		for _, ety := range hist {
 			if isEqual(ety, TagVal{Val: val, Ts: vecI}) {
 				msg.Kind = MATCH
