@@ -1,10 +1,15 @@
 package main
 
+import "sync"
+
 //var h = diskv.New(diskv.Options{
 //	BasePath:     "hist" + strconv.Itoa(nodeId),
 //})
 
-var h = make(map[string][]TagVal)
+var(
+	h = make(map[string][]TagVal)
+	histLock = sync.Mutex{}
+	)
 
 //func getGobFromHist(etys *[]TagVal) []byte {
 //	var res bytes.Buffer
@@ -44,6 +49,7 @@ var h = make(map[string][]TagVal)
 //}
 
 func histAppend(key string, tv *TagVal) {
+	histLock.Lock()
 	if hist, isIn := h[key]; isIn {
 		if len(hist) == NUM_CLIENT {
 			h[key] = hist[1:]
@@ -52,4 +58,5 @@ func histAppend(key string, tv *TagVal) {
 	} else {
 		h[key] = []TagVal{*tv}
 	}
+	histLock.Unlock()
 }
