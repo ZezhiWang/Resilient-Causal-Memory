@@ -62,8 +62,7 @@ func createRep(msg Message) (Message,bool) {
 	switch msg.OpType{
 	// if store phase
 	case STORE:
-		store(msg.Tv)
-		flag = false
+		msg = store(msg.Tv)
 	// if get
 	case GET:
 		msg = get(msg.Tv)

@@ -67,7 +67,11 @@ func store(tv TagVal){
 	defer dealer.Close()
 	fmt.Println("set ts", tv.Ts, "key",tv.Key)
 	msg := Message{OpType: STORE, Tv: tv}
-	sendStore(msg, dealer)
+	broadcast(msg,dealer)
+	//sendStore(msg, dealer)
+	for i := 0; i < WRITE_QUORUM; i++ {
+		recvAck(dealer)
+	}
 }
 
 // get new ts

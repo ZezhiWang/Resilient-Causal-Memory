@@ -19,6 +19,7 @@ const GET = 0
 const GETTS = 1
 const STORE = 2
 const ERR = 3
+const ACK = 4
 
 func main(){
 	// init storage IP

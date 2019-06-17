@@ -1,6 +1,7 @@
 package main 
 
 import (
+	"fmt"
 	zmq "github.com/pebbe/zmq4"
 )
 
@@ -10,23 +11,27 @@ func createDealerSocket() *zmq.Socket {
 	var addr string
 	for _,server := range servers {
 		addr = "tcp://" + server
-		dealer.Connect(addr)
+		if err := dealer.Connect(addr); err != nil{
+			fmt.Println("err connecting", err)
+		}
 	}
 	return dealer
 }
 
-func sendStore(msg Message, dealer *zmq.Socket) {
-	msgToSend := getGobFromMsg(msg)
-	for i := 0 ; i < WRITE_QUORUM; i++ {
-		dealer.SendBytes(msgToSend.Bytes(), 0)
-	}
-}
+//func sendStore(msg Message, dealer *zmq.Socket) {
+//	msgToSend := getGobFromMsg(msg)
+//	for i := 0 ; i < WRITE_QUORUM; i++ {
+//		dealer.SendBytes(msgToSend.Bytes(), 0)
+//	}
+//}
 
 // broadcast to all server
 func broadcast(msg Message, dealer *zmq.Socket) {
 	msgToSend := getGobFromMsg(msg)
 	for i := 0 ; i < len(servers); i++ {
-		dealer.SendBytes(msgToSend.Bytes(), 0)
+		if _,err:= dealer.SendBytes(msgToSend.Bytes(), 0); err != nil {
+			fmt.Println("fail to broadcast")
+		}
 	}
 }
 
@@ -48,4 +53,12 @@ func recvTs(dealer *zmq.Socket) int{
 		return recvTs(dealer)
 	}
 	return msg.Tv.Ts
+}
+
+func recvAck(dealer *zmq.Socket) {
+	msgBytes,_ := dealer.RecvBytes(0)
+	msg := getMsgFromGob(msgBytes)
+	if msg.OpType != ACK {
+		recvAck(dealer)
+	}
 }

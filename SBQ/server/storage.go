@@ -6,8 +6,13 @@ import (
 	"fmt"
 )
 
-func store(tv TagVal) {
-	writeData(tv)
+func store(tv TagVal) Message {
+	var res = Message{	ERR, TagVal{Ts:-1,Key:tv.Key,Val:""}}
+	if local,err := readData(tv.Key); err != nil || local.Ts < tv.Ts{
+		writeData(tv)
+		res.OpType = ACK
+	}
+	return res
 }
 
 func get(tv TagVal) Message{
