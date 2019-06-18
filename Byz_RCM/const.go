@@ -14,4 +14,4 @@ const FILTER = ""
 
 const F = 1
 
-const NUM_CLIENT = 2
+const NUM_CLIENT = 3

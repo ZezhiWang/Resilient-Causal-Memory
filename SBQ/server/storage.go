@@ -6,6 +6,7 @@ import (
 	"fmt"
 )
 
+// to store
 func store(tv TagVal) Message {
 	var res = Message{	ERR, TagVal{Ts:-1,Key:tv.Key,Val:""}}
 	if local,err := readData(tv.Key); err != nil || local.Ts <= tv.Ts{

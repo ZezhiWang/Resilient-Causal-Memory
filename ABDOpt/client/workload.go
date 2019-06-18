@@ -23,7 +23,7 @@ func initWrite(num int){
 }
 
 // write info into table
-func write_load(num int, val string) time.Duration {
+func writeLoad(num int, val string) time.Duration {
 	// write data in the form (int, string) into table tmp
 	// mutex.Lock()
 	key := strconv.Itoa(num)
@@ -36,7 +36,7 @@ func write_load(num int, val string) time.Duration {
 }
 
 // read info from table by key
-func read_load(num int) time.Duration {
+func readLoad(num int) time.Duration {
 	// write data in the form table tmp with key = num
 	// mutex.Lock()
 	key := strconv.Itoa(num)
@@ -49,13 +49,13 @@ func read_load(num int) time.Duration {
 }
 
 func workload(num int){
-	var write_times []int
-	var read_times []int
+	var writeTimes []int
+	var readTimes []int
 
-	num_read := 0
-	num_write := 0
+	numRead := 0
+	numWrite := 0
 
-	var WTotal, RTotal int = 0, 0
+	var WTotal, RTotal = 0, 0
 
 	// insert value into table before start testing
 	initWrite(10)
@@ -66,27 +66,27 @@ func workload(num int){
 		temp := rand.Float64()
 		if temp < READ_PORTION {
 			fmt.Println("reading...")
-			millisec := int(read_load(i%10).Nanoseconds()/1000)
+			millisec := int(readLoad(i%10).Nanoseconds()/1000)
 			RTotal += millisec
-			read_times = append(read_times, millisec)
-			num_read += 1
+			readTimes = append(readTimes, millisec)
+			numRead += 1
 		} else {
 			fmt.Println("writing...")
-			millisec := int(write_load(i%10, strings.Repeat(strconv.Itoa(i % 10), DATASIZE)).Nanoseconds()/1000)
+			millisec := int(writeLoad(i%10, strings.Repeat(strconv.Itoa(i % 10), DATASIZE)).Nanoseconds()/1000)
 			WTotal += millisec
-			write_times = append(write_times, millisec)
-			num_write += 1
+			writeTimes = append(writeTimes, millisec)
+			numWrite += 1
 		}
 	}
 	end := time.Now()
 	totalTime := end.Sub(start)
 
-	sort.Ints(write_times)
-	sort.Ints(read_times)
+	sort.Ints(writeTimes)
+	sort.Ints(readTimes)
 
-	fmt.Printf("Thorough put: %f op/sec\n", float64(num_read + num_write) / float64(totalTime.Seconds()))
-	fmt.Printf("Avg write time: %f us\n", float64(WTotal)/float64(num_write))
-	fmt.Printf("Avg read time: %f us\n", float64(RTotal)/float64(num_read))
-	fmt.Printf("95-th percentile for write time: %d us\n", write_times[int(float64(num_write) * 0.95)])
-	fmt.Printf("95-th percentile for read time: %d us\n", read_times[int(float64(num_read) * 0.95)])
+	fmt.Printf("Thorough put: %f op/sec\n", float64(numRead+numWrite) / float64(totalTime.Seconds()))
+	fmt.Printf("Avg write time: %f us\n", float64(WTotal)/float64(numWrite))
+	fmt.Printf("Avg read time: %f us\n", float64(RTotal)/float64(numRead))
+	fmt.Printf("95-th percentile for write time: %d us\n", writeTimes[int(float64(numWrite) * 0.95)-1])
+	fmt.Printf("95-th percentile for read time: %d us\n", readTimes[int(float64(numRead) * 0.95)-1])
 }
