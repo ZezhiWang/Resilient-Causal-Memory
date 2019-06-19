@@ -16,14 +16,14 @@ func read(key string) string{
 	dealer := createDealerSocket()
 	defer dealer.Close()
 
-	// init tagval
+	// init tagVal
 	tv := TagVal{Ts: -1, Key: key, Val: ""}
 	msg := Message{OpType: GET, Tv: tv}
 	broadcast(msg, dealer)
 
 	responses := make(map[TagVal]int)
 	// count received pairs
-	for i := 0; i < READ_QUORUM; i++ {
+	for i := 0; i < ReadQuorum; i++ {
 		tmp := recvData(dealer)
 		if _,isIn := responses[tmp]; isIn {
 			responses[tmp] += 1
@@ -51,7 +51,7 @@ func getTs(key string) int{
 	broadcast(msg, dealer)
 
 	maxTs := -1
-	for i := 0; i < READ_QUORUM; i++ {
+	for i := 0; i < ReadQuorum; i++ {
 		tmp := recvTs(dealer)
 		if maxTs < tmp {
 			maxTs = tmp
@@ -69,7 +69,7 @@ func store(tv TagVal){
 	msg := Message{OpType: STORE, Tv: tv}
 	broadcast(msg,dealer)
 	//sendStore(msg, dealer)
-	for i := 0; i < WRITE_QUORUM; i++ {
+	for i := 0; i < WriteQuorum; i++ {
 		recvAck(dealer)
 	}
 }

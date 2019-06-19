@@ -19,9 +19,9 @@ type Client struct {
 
 func (clt *Client) init() {
 	// init vector timestamp with length group_size
-	clt.vecClocks = make([]int, NUM_CLIENT)
+	clt.vecClocks = make([]int, NumClient)
 	// set vector timestamp to zero
-	for i := 0; i < NUM_CLIENT; i++ {
+	for i := 0; i < NumClient; i++ {
 		clt.vecClocks[i] = 0
 	}
 	clt.counter = 0

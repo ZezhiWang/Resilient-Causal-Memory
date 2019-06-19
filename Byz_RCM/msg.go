@@ -11,8 +11,8 @@ type Message struct {
 	Id			int
 	Key			string
 	Val			string
-	Ts      	[NUM_CLIENT]int // vector timestamp of server or client
-	//Vec			[NUM_CLIENT]int // vector timestamp associate with key and value
+	Ts      	[NumClient]int // vector timestamp of server or client
+	//Vec			[NumClient]int // vector timestamp associate with key and value
 	Counter		int
 	Sender		int
 }

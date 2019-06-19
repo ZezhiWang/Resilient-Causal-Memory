@@ -12,7 +12,7 @@ type WitnessEntry struct {
 }
 
 type Server struct {
-	vecClock      [NUM_CLIENT]int
+	vecClock      [NumClient]int
 	vecClockLock  sync.Mutex
 	vecClockCond  *sync.Cond
 	queue         Queue
@@ -25,11 +25,11 @@ type Server struct {
 }
 
 func (svr *Server) init(pubPort string) {
-	svr.vecClock = [NUM_CLIENT]int{0}
+	svr.vecClock = [NumClient]int{0}
 	svr.vecClockLock = sync.Mutex{}
 	svr.vecClockCond = sync.NewCond(&svr.vecClockLock)
 	// set vector timestamp to zero
-	for i := 0; i < NUM_CLIENT; i++ {
+	for i := 0; i < NumClient; i++ {
 		svr.vecClock[i] = 0
 	}
 	// init queue
@@ -44,7 +44,7 @@ func (svr *Server) init(pubPort string) {
 }
 
 // Actions to take if server receives READ message
-func (svr *Server) recvRead(key string, id int, counter int, vecI [NUM_CLIENT]int) *Message {
+func (svr *Server) recvRead(key string, id int, counter int, vecI [NumClient]int) *Message {
 	// wait until M[k].t is greater than t_i
 	//svr.waitUntilServerClockGreaterExceptI(key, vecI, 999999)
 	svr.waitUntilServerClockGreater(vecI)
@@ -56,7 +56,7 @@ func (svr *Server) recvRead(key string, id int, counter int, vecI [NUM_CLIENT]in
 }
 
 // Actions to take if server receives WRITE message
-func (svr *Server) recvWrite(key string, val string, id int, counter int, vecI [NUM_CLIENT]int) *Message{
+func (svr *Server) recvWrite(key string, val string, id int, counter int, vecI [NumClient]int) *Message{
 	//fmt.Println(nodeId, "recv write", vecI, "from client", id)
 	// broadcast UPDATE message
 	msg := Message{Kind: UPDATE, Key: key, Val: val, Id: id, Counter: counter, Ts: vecI, Sender: nodeId}
@@ -82,7 +82,7 @@ func (svr *Server) recvWrite(key string, val string, id int, counter int, vecI [
 }
 
 // Actions to take if server receives CHECK message
-func (svr *Server) recvCheck(key string, val string, counter int, vecI [NUM_CLIENT]int) *Message{
+func (svr *Server) recvCheck(key string, val string, counter int, vecI [NumClient]int) *Message{
 	// hist := histFromDisk(key)
 	msg := Message{Kind: ERROR, Val: val, Ts: svr.vecClock, Counter: counter, Sender: nodeId}
 	histLock.Lock()
@@ -100,7 +100,7 @@ func (svr *Server) recvCheck(key string, val string, counter int, vecI [NUM_CLIE
 }
 
 // Actions to take if server receives UPDATE message
-func (svr *Server) recvUpdate(key string, val string, id int, counter int, vecI [NUM_CLIENT]int, senderId int) {
+func (svr *Server) recvUpdate(key string, val string, id int, counter int, vecI [NumClient]int, senderId int) {
 	//fmt.Println(nodeId, "recv update", vecI, "from svr", senderId)
 	entry := WitnessEntry{id: id, counter: counter}
 
@@ -155,11 +155,11 @@ func (svr *Server) update() {
 }
 
 // helper function that return true if elements of vec1 are smaller than those of vec2 except i-th element; false otherwise
-func smallerEqualExceptI(vec1 [NUM_CLIENT]int, vec2 [NUM_CLIENT]int, i int) bool {
+func smallerEqualExceptI(vec1 [NumClient]int, vec2 [NumClient]int, i int) bool {
 	//if len(vec1) != len(vec2) {
 	//	panic("vector clocks are of different lengths")
 	//}
-	for index := 0; index < NUM_CLIENT; index++ {
+	for index := 0; index < NumClient; index++ {
 		if index == i {
 			continue
 		}
@@ -170,7 +170,7 @@ func smallerEqualExceptI(vec1 [NUM_CLIENT]int, vec2 [NUM_CLIENT]int, i int) bool
 	return true
 }
 //
-//func (svr *Server) waitUntilServerClockGreaterExceptI(key string, vec [NUM_CLIENT]int, i int) {
+//func (svr *Server) waitUntilServerClockGreaterExceptI(key string, vec [NumClient]int, i int) {
 //	svr.vecClockCond.L.Lock()
 //	ety := readFromDisk(key)
 //	for !smallerEqualExceptI(vec, ety.Ts, i) {
@@ -181,7 +181,7 @@ func smallerEqualExceptI(vec1 [NUM_CLIENT]int, vec2 [NUM_CLIENT]int, i int) bool
 //	svr.vecClockCond.L.Unlock()
 //}
 
-func (svr *Server) waitUntilServerClockGreater(vec [NUM_CLIENT]int) {
+func (svr *Server) waitUntilServerClockGreater(vec [NumClient]int) {
 	svr.vecClockCond.L.Lock()
 	for !smallerEqualExceptI(vec, svr.vecClock, 999999) {
 		fmt.Println("READ", nodeId, "client:", vec, "disk:", svr.vecClock)

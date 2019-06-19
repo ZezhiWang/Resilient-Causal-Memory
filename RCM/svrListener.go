@@ -23,7 +23,9 @@ func (svr *Server) serverTask(svrAddr string) {
 		fmt.Println("err binding backend", err)
 	}
 
-	go svr.serverWorker()
+	for i := 0; i < NumWorker; i++ {
+		go svr.serverWorker()
+	}
 
 	//  Connect backend to frontend via a proxy
 	err := zmq.Proxy(frontend, backend, nil)

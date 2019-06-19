@@ -1,6 +1,7 @@
 package main 
 
 import (
+	"fmt"
 	zmq "github.com/pebbe/zmq4"
 )
 
@@ -10,7 +11,9 @@ func createDealerSocket() *zmq.Socket {
 	var addr string
 	for _,server := range servers {
 		addr = "tcp://" + server
-		dealer.Connect(addr)
+		if err := dealer.Connect(addr); err != nil {
+			fmt.Println("err connecting server", server)
+		}
 	}
 	return dealer
 }
@@ -19,7 +22,9 @@ func createDealerSocket() *zmq.Socket {
 func sendToServer(msg Message, dealer *zmq.Socket) {
 	msgToSend := getGobFromMsg(msg)
 	for i := 0 ; i < len(servers); i++ {
-		dealer.SendBytes(msgToSend.Bytes(), 0)
+		if _,err := dealer.SendBytes(msgToSend.Bytes(), 0); err != nil {
+			fmt.Println("err sending")
+		}
 	}
 }
 

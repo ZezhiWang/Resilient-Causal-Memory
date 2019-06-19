@@ -11,27 +11,27 @@ import (
 )
 
 var (
-    node_id     int
-    node_type   string
+    nodeId   int
+    nodeType string
     // mutex = new(sync.mutex)
-    server_list = make(map[int]string)
-    server_pub = make(map[int]string)
-    status      bool
+    serverLists = make(map[int]string)
+    serverPubs  = make(map[int]string)
+    //status      bool
     d = diskv.New(diskv.Options{
         BasePath:     "data",
     })
 )
 
 func main() {
-    //node_type = os.Getenv("type")
-    flag.StringVar(&node_type, "type", "server", "specify the node type")
+    //nodeType = os.Getenv("type")
+    flag.StringVar(&nodeType, "type", "server", "specify the node type")
 
     // up and running
-    status = true
+    //status = true
 
     // get node id
     // id,_ = strconv.Atoi(os.Getenv("id"))
-    flag.IntVar(&node_id, "id", 0, "specify the node id")
+    flag.IntVar(&nodeId, "id", 0, "specify the node id")
     flag.Parse()
     // read config file
     config, err := os.Open("config.txt")
@@ -47,17 +47,19 @@ func main() {
             fmt.Println(err)
             return
         }
-        server_list[id] = line[1]
-        server_pub[id] = line[2]
+        serverLists[id] = line[1]
+        serverPubs[id] = line[2]
     }
-    config.Close()
+    if err := config.Close(); err != nil {
+        panic(err)
+    }
 
-    switch node_type {
+    switch nodeType {
     case "server":
         var node Server
 
-        node.init(server_pub[node_id])
-        go node.serverTask(server_list[node_id])
+        node.init(serverPubs[nodeId])
+        go node.serverTask(serverLists[nodeId])
 
         done := make(chan bool)
         <- done

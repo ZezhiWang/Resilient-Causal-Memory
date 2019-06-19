@@ -6,23 +6,23 @@ import (
 )
 
 type ReadBufEntry struct {
-	val 		string
-	vec_clock	[]int
+	val       string
+	vecClocks []int
 }
 
 type Client struct {
-	vec_clock		[]int
-	counter			int
-	readBuf 		map[int]ReadBufEntry
-	writeBuf		map[int][]int
-	localBuf		map[string]string
+	vecClocks []int
+	counter   int
+	readBuf   map[int]ReadBufEntry
+	writeBuf  map[int][]int
+	localBuf  map[string]string
 }
 
 func (clt *Client) init() {
 	// init vector timestamp with length group_size
-	clt.vec_clock = make([]int, NUM_CLIENT)
-	for i:= 0; i < NUM_CLIENT; i++ {
-		clt.vec_clock[i] = 0
+	clt.vecClocks = make([]int, NumClient)
+	for i:= 0; i < NumClient; i++ {
+		clt.vecClocks[i] = 0
 	}
 	clt.counter = 0
 	// init read buffer as counter(int) - (value, timestamp) tuple (ReadBufEntry) pairs
@@ -34,11 +34,11 @@ func (clt *Client) init() {
 func (clt *Client) read(key string) string {
 	dealer := createDealerSocket()
 	defer dealer.Close()
-	msg := Message{Kind: READ, Key: key, Id: node_id, Counter: clt.counter, Vec: clt.vec_clock}
+	msg := Message{Kind: READ, Key: key, Id: nodeId, Counter: clt.counter, Vec: clt.vecClocks}
 	zmqBroadcast(&msg,dealer)
-	fmt.Printf("Client %d broadcasted msg READ\n", node_id)
+	fmt.Printf("Client %d broadcasted msg READ\n", nodeId)
 
-	for i := 0; i < len(server_list); i++{
+	for i := 0; i < len(serverLists); i++{
 		clt.recvRESP(dealer)
 		if _,isIn := clt.readBuf[clt.counter]; isIn{
 			break
@@ -46,7 +46,7 @@ func (clt *Client) read(key string) string {
 	}
 	entry,_ := clt.readBuf[clt.counter]
 	clt.counter += 1
-	if smallerEqualExceptI(entry.vec_clock, clt.vec_clock, 999999) {
+	if smallerEqualExceptI(entry.vecClocks, clt.vecClocks, 999999) {
 		val, isIn := clt.localBuf[key]
 		if !isIn {
 			panic("value is not in local buffer")
@@ -54,27 +54,27 @@ func (clt *Client) read(key string) string {
 		}
 		return val
 	} else {
-		clt.merge_clock(entry.vec_clock)
+		clt.mergeClock(entry.vecClocks)
 		return entry.val
 	}
 }
 
 func (clt *Client) write(key string, value string) {
-	clt.vec_clock[node_id] += 1
+	clt.vecClocks[nodeId] += 1
 	dealer := createDealerSocket()
 	defer dealer.Close()
-	msg := Message{Kind: WRITE, Key: key, Val: value, Id: node_id, Counter: clt.counter, Vec: clt.vec_clock}
+	msg := Message{Kind: WRITE, Key: key, Val: value, Id: nodeId, Counter: clt.counter, Vec: clt.vecClocks}
 	zmqBroadcast(&msg,dealer)
-	fmt.Printf("Client %d broadcasted msg WRITE\n", node_id)
+	fmt.Printf("Client %d broadcasted msg WRITE\n", nodeId)
 	
-	for i := 0; i < len(server_list); i++{
+	for i := 0; i < len(serverLists); i++{
 		clt.recvACK(dealer)
 		if _,isIn := clt.writeBuf[clt.counter]; isIn{
 			break
 		}
 	}
 	entry,_ := clt.writeBuf[clt.counter]
-	clt.merge_clock(entry)
+	clt.mergeClock(entry)
 	clt.localBuf[key] = value
 	clt.counter += 1
 }
@@ -88,7 +88,7 @@ func (clt *Client) recvRESP(dealer *zmq.Socket){
 	if msg.Kind != RESP || msg.Counter != clt.counter {
 		clt.recvRESP(dealer)
 	} else{
-		clt.readBuf[msg.Counter] = ReadBufEntry{val: msg.Val, vec_clock: msg.Vec}
+		clt.readBuf[msg.Counter] = ReadBufEntry{val: msg.Val, vecClocks: msg.Vec}
 		fmt.Println("RESP message received vec", msg.Vec)
 	}
 }
@@ -108,13 +108,13 @@ func (clt *Client) recvACK(dealer *zmq.Socket) {
 	}
 }
 
-func (clt *Client) merge_clock(vec []int) {
-	if len(clt.vec_clock) != len(vec) {
+func (clt *Client) mergeClock(vec []int) {
+	if len(clt.vecClocks) != len(vec) {
 		panic("vector clocks are of different lengths")
 	}
-	for i:=0; i<len(clt.vec_clock); i++ {
-		if vec[i] > clt.vec_clock[i] {
-			clt.vec_clock[i] = vec[i]
+	for i:=0; i<len(clt.vecClocks); i++ {
+		if vec[i] > clt.vecClocks[i] {
+			clt.vecClocks[i] = vec[i]
 		}
 	}
 }

@@ -24,12 +24,12 @@ func get(key string) (TagVal,bool) {
 	dealer := createDealerSocket()
 	defer dealer.Close()
 
-	// init tagval
+	// init tagVal
 	tv := TagVal{Tag: Tag{Id: "", Ts: -1}, Key: key, Val: ""}
 	msg := Message{OpType: GET, Tv: tv}
 	sendToServer(msg, dealer)
 	
-	// find tagval with biggest tag in quorum 
+	// find tagVal with biggest tag in quorum
 	for i := 0; i < len(servers)/2 + 1; i++ {
 		tmp := recvData(dealer)
 		if tv.Tag.smaller(tmp.Tag) {

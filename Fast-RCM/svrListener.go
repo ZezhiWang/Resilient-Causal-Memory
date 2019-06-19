@@ -11,15 +11,21 @@ func (svr *Server) serverTask(svrAddr string) {
 	frontend,_ := zmq.NewSocket(zmq.ROUTER)
 	defer fmt.Println("frontend socket closed")
 	defer frontend.Close()
-	frontend.Bind("tcp://" + svrAddr)
+	if err := frontend.Bind("tcp://" + svrAddr); err != nil {
+		fmt.Println("err binding local addr")
+	}
 
 	//  Backend socket talks to workers over inproc
 	backend, _ := zmq.NewSocket(zmq.DEALER)
 	defer fmt.Println("backend socket closed")
 	defer backend.Close()
-	backend.Bind("inproc://backend")
+	if err := backend.Bind("inproc://backend"); err != nil {
+		fmt.Println("err binding backend")
+	}
 
-	go svr.serverWorker()
+	for i := 0; i < NumWorker; i++ {
+		go svr.serverWorker()
+	}
 
 	//  Connect backend to frontend via a proxy
 	err := zmq.Proxy(frontend, backend, nil)
@@ -30,7 +36,9 @@ func (svr *Server) serverWorker() {
 	worker, _ := zmq.NewSocket(zmq.DEALER)
 	defer fmt.Println("worker socket closed")
 	defer worker.Close()
-	worker.Connect("inproc://backend")
+	if err := worker.Connect("inproc://backend"); err != nil {
+		fmt.Println("worker err connecting")
+	}
 	msgReply := make([][]byte, 2)
 
 	for i := 0; i < len(msgReply); i++ {
@@ -67,10 +75,10 @@ func (svr *Server) createRep(input Message) *Message {
 	var output *Message
 	switch input.Kind {
 	case READ:
-		// fmt.Println("server receives READ message with vec_clock", input.Vec)
+		// fmt.Println("server receives READ message with vecClocks", input.Vec)
 		output = svr.recvRead(input.Key, input.Id, input.Counter, input.Vec)
 	case WRITE:
-		// fmt.Println("server receives WRITE message with vec_clock", input.Vec)
+		// fmt.Println("server receives WRITE message with vecClocks", input.Vec)
 		output = svr.recvWrite(input.Key, input.Val, input.Id, input.Counter, input.Vec)
 	}
 	return output

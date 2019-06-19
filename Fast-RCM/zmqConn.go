@@ -8,16 +8,20 @@ import (
 func createDealerSocket() *zmq.Socket {
 	dealer,_ := zmq.NewSocket(zmq.DEALER)
 	var addr string
-	for _,server := range server_list {
+	for _,server := range serverLists {
 		addr = "tcp://" + server
-		dealer.Connect(addr)
+		if err := dealer.Connect(addr); err != nil {
+			fmt.Println("err connecting server", server)
+		}
 	}
 	return dealer
 }
 
 func createPublisherSocket(pubAddr string) *zmq.Socket {
 	publisher,_ := zmq.NewSocket(zmq.PUB)
-	publisher.Bind("tcp://" + pubAddr)
+	if err := publisher.Bind("tcp://" + pubAddr); err != nil {
+		fmt.Println("publisher err binding")
+	}
 	return publisher
 }
 
@@ -25,29 +29,32 @@ func createPublisherSocket(pubAddr string) *zmq.Socket {
 func createSubscriberSocket() *zmq.Socket {
 	subscriber,_ := zmq.NewSocket(zmq.SUB)
 	var addr string
-	for _,server := range server_pub {
+	for _,server := range serverPubs {
 		addr = "tcp://" + server
-		subscriber.Connect(addr)
+		if err := subscriber.Connect(addr); err != nil {
+			fmt.Println("err connecting server", addr)
+		}
 	}
-	subscriber.SetSubscribe(FILTER)
+	if err := subscriber.SetSubscribe(FILTER); err != nil {
+		fmt.Println("err setting filter")
+	}
 	return subscriber
 }
 
 func (svr *Server) publish(msg *Message) {
 	b := getGobFromMsg(msg)
-	// publisher.Send(FILTER, zmq.SNDMORE)
-	svr.publisher_lock.Lock()
+	svr.publisherLock.Lock()
 	if _, err := svr.publisher.SendBytes(b,0); err != nil {
 		fmt.Println("Error occurred at line 42 in file zmqConn.go", err)
 	}
-	svr.publisher_lock.Unlock()
+	svr.publisherLock.Unlock()
 }
 
 // broadcast to all
 func zmqBroadcast(msg *Message, dealer *zmq.Socket){
 	//use gob to serialized data before sending
 	b := getGobFromMsg(msg)
-	for i := 0; i < len(server_list); i++ {
+	for i := 0; i < len(serverLists); i++ {
 		if _, err := dealer.SendBytes(b,0); err != nil {
 			fmt.Println("Error occurred when dealer sending msg, ", err)
 		}

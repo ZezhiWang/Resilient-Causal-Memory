@@ -19,7 +19,7 @@ var (
 // used to mark the phase
 const GET = 0
 const SET = 1
-const DATASIZE = 1024
+const DataSize = 1024
 const ERR = 2
 
 func main() {
@@ -43,7 +43,9 @@ func main() {
 		}
 		servers[id] = line[1]
 	}
-	config.Close()
+	if err := config.Close(); err != nil{
+		panic(err)
+	}
 
 //	client()
 	workload(10000)

@@ -26,11 +26,11 @@ type Server struct {
 
 func (svr *Server) init(pubAddr string) {
 	// init vector timestamp with length group_size
-	svr.vecClocks = make([]int, NUM_CLIENT)
+	svr.vecClocks = make([]int, NumClient)
 	svr.vecClockLock = sync.Mutex{}
 	svr.vecClockCond = sync.NewCond(&svr.vecClockLock)
 	// set vector timestamp to zero
-	for i := 0; i < NUM_CLIENT; i++ {
+	for i := 0; i < NumClient; i++ {
 		svr.vecClocks[i] = 0
 	}
 	// init queue

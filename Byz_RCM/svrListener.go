@@ -9,7 +9,6 @@ import (
 func (svr *Server) serverTask(svrAddr string) {
 	// Set the ZMQ sockets
 	frontend,_ := zmq.NewSocket(zmq.ROUTER)
-	defer fmt.Println("frontend socket closed")
 	defer frontend.Close()
 
 	if err := frontend.Bind("tcp://" + svrAddr); err != nil{
@@ -18,14 +17,15 @@ func (svr *Server) serverTask(svrAddr string) {
 
 	//  Backend socket talks to workers over inproc
 	backend, _ := zmq.NewSocket(zmq.DEALER)
-	defer fmt.Println("backend socket closed")
 	defer backend.Close()
 
 	if err := backend.Bind("inproc://backend"); err != nil {
 		fmt.Println("err binding backend")
 	}
 
-	go svr.serverWorker()
+	for i := 0; i < NumWorker; i++ {
+		go svr.serverWorker()
+	}
 
 	//  Connect backend to frontend via a proxy
 	err := zmq.Proxy(frontend, backend, nil)

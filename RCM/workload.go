@@ -11,15 +11,15 @@ import(
 
 // initialize mutex lock
 // var mutex = &sync.Mutex{}
-const READ_PORTION = 0.3
-const DATA_SIZE = 64
+const ReadPortion = 0.3
+const DataSize = 64
 
 // write info into table before read, with out tracking time
 func (clt *Client) initWrite(num int){
 	// write data in the form (string,blob) into table tmp
 	for i:= 0; i < num; i++{
 		key := strconv.Itoa(i)
-		clt.write(key, strings.Repeat(strconv.Itoa(i % 10), DATA_SIZE))
+		clt.write(key, strings.Repeat(strconv.Itoa(i % 10), DataSize))
 	}
 }
 
@@ -61,17 +61,17 @@ func (clt *Client) workload(num int){
 	start := time.Now()
 	for i := 0; i < num; i++ {
 		temp := rand.Float64()
-		if temp < READ_PORTION {
+		if temp < ReadPortion {
 			// fmt.Println("reading...")
-			millisec := int(clt.readLoad(i%10).Nanoseconds()/1000)
-			RTotal += millisec
-			readTimes = append(readTimes, millisec)
+			mSec := int(clt.readLoad(i%10).Nanoseconds()/1000)
+			RTotal += mSec
+			readTimes = append(readTimes, mSec)
 			numRead += 1
 		} else {
 			// fmt.Println("writing...")
-			millisec := int(clt.writeLoad(i%10, strings.Repeat(strconv.Itoa(i % 10), DATA_SIZE)).Nanoseconds()/1000)
-			WTotal += millisec
-			writeTimes = append(writeTimes, millisec)
+			mSec := int(clt.writeLoad(i%10, strings.Repeat(strconv.Itoa(i % 10), DataSize)).Nanoseconds()/1000)
+			WTotal += mSec
+			writeTimes = append(writeTimes, mSec)
 			numWrite += 1
 		}
 	}

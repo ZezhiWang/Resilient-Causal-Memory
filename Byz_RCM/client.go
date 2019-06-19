@@ -7,24 +7,24 @@ import (
 
 type ReadBufEntry struct {
 	val      	string
-	vec		 	[NUM_CLIENT]int
+	vec		 	[NumClient]int
 }
 
 type Client struct {
-	vecClock [NUM_CLIENT]int
+	vecClock [NumClient]int
 	counter  int
 	writeBuf map[int]map[int]bool
 	readBuf  map[int]map[ReadBufEntry]map[int]bool
 	hasResp  map[int]map[int]bool
 	tvChan   chan TagVal
-	vecByKey map[string][NUM_CLIENT]int
+	vecByKey map[string][NumClient]int
 }
 
 func (clt *Client) init() {
 	// init vector timestamp with length group_size
-	clt.vecClock = [NUM_CLIENT]int{}
+	clt.vecClock = [NumClient]int{}
 	// set vector timestamp to zero
-	for i := 0; i < NUM_CLIENT; i++ {
+	for i := 0; i < NumClient; i++ {
 		clt.vecClock[i] = 0
 	}
 	clt.counter = 0
@@ -36,7 +36,7 @@ func (clt *Client) init() {
 	clt.hasResp = make(map[int]map[int]bool)
 
 	clt.tvChan = make(chan TagVal, 1)
-	clt.vecByKey = make(map[string][NUM_CLIENT]int)
+	clt.vecByKey = make(map[string][NumClient]int)
 }
 
 func (clt *Client) read(key string) string {
@@ -127,7 +127,7 @@ func (clt *Client) recvRESP(dealer *zmq.Socket) (TagVal,bool) {
 		clt.hasResp[msg.Counter][msg.Sender] = true
 	}
 
-	return TagVal{[NUM_CLIENT]int{},""},false
+	return TagVal{[NumClient]int{},""},false
 }
 
 // Actions to take if receive ACK message
@@ -150,13 +150,13 @@ func (clt *Client) recvACK(dealer *zmq.Socket) {
 }
 
 // helper function that merges a vector clock with client's own vector clock
-func (clt *Client) mergeClock(vec [NUM_CLIENT]int) {
+func (clt *Client) mergeClock(vec [NumClient]int) {
 	//if len(clt.vecClock) != len(vec) {
 	//	fmt.Println(clt.vecClock)
 	//	fmt.Println(vec)
 	//	panic("vector clocks are of different lengths")
 	//}
-	for i := 0; i < NUM_CLIENT; i++ {
+	for i := 0; i < NumClient; i++ {
 		if vec[i] > clt.vecClock[i] {
 			clt.vecClock[i] = vec[i]
 		}

@@ -20,7 +20,7 @@ func createDealerSocket() *zmq.Socket {
 
 //func sendStore(msg Message, dealer *zmq.Socket) {
 //	msgToSend := getGobFromMsg(msg)
-//	for i := 0 ; i < WRITE_QUORUM; i++ {
+//	for i := 0 ; i < WriteQuorum; i++ {
 //		dealer.SendBytes(msgToSend.Bytes(), 0)
 //	}
 //}

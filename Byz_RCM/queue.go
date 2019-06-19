@@ -8,7 +8,7 @@ type QueueEntry struct {
 	Key		string
 	Val 	string
 	Id 		int
-	Vec		[NUM_CLIENT]int
+	Vec		[NumClient]int
 }
 
 type Queue struct {

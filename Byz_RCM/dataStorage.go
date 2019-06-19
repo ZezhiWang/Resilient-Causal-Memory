@@ -13,7 +13,7 @@ var d = diskv.New(diskv.Options{
 })
 
 type TagVal struct {
-	Ts  [NUM_CLIENT]int
+	Ts  [NumClient]int
 	Val string
 }
 
@@ -25,12 +25,12 @@ func isEqual(tv1 TagVal, tv2 TagVal) bool {
 	return vecIsEqual(tv1.Ts,tv2.Ts)
 }
 
-func vecIsEqual(vec1 [NUM_CLIENT]int, vec2[NUM_CLIENT]int) bool{
+func vecIsEqual(vec1 [NumClient]int, vec2[NumClient]int) bool{
 	//if len(vec1) != len(vec2){
 	//	return false
 	//}
 
-	for i := 0; i < NUM_CLIENT; i++ {
+	for i := 0; i < NumClient; i++ {
 		if vec1[i] != vec2[i]{
 			return false
 		}
@@ -57,7 +57,7 @@ func getEntryFromGob(etyBytes []byte) TagVal {
 	dec := gob.NewDecoder(&buff)
 	if err := dec.Decode(&ety); err != nil {
 		fmt.Println("Error occurred when decoding Entry", err)
-		return TagVal{Ts: [2]int{0,0}, Val: ""}
+		return TagVal{}
 	}
 	return ety
 }
@@ -74,5 +74,5 @@ func readFromDisk(key string) TagVal {
 	if b, err := d.Read(key); err == nil {
 		return getEntryFromGob(b)
 	}
-	return TagVal{Ts: [2]int{0,0}, Val: ""}
+	return TagVal{}
 }

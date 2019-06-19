@@ -26,5 +26,5 @@ func main(){
 	flag.StringVar(&addr, "addr", "128.52.179.163", "input addr")
 	flag.Parse()
 	// create cassandra session
-	server_task()
+	serverTask()
 }

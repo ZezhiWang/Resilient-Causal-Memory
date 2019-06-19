@@ -51,7 +51,7 @@ var(
 func histAppend(key string, tv *TagVal) {
 	histLock.Lock()
 	if hist, isIn := h[key]; isIn {
-		if len(hist) == NUM_CLIENT {
+		if len(hist) == NumClient {
 			h[key] = hist[1:]
 		}
 		h[key] = append(hist, *tv)

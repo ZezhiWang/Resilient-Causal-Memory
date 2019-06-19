@@ -24,11 +24,9 @@ const STORE = 2
 const ERR = 3
 const ACK = 4
 
-const READ_QUORUM = 3
-const WRITE_QUORUM = 3
+const ReadQuorum = 3
+const WriteQuorum = 3
 const F = 1
-
-const DATASIZE = 1024
 
 func main() {
 	// init client id
@@ -51,7 +49,9 @@ func main() {
 		}
 		servers[id] = line[1]
 	}
-	config.Close()
+	if err := config.Close(); err != nil {
+		panic(err)
+	}
 
 //	client()
 	workload(10000)

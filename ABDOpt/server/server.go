@@ -2,22 +2,28 @@ package main
 
 import (
 	"fmt"
-	"log"
 	zmq "github.com/pebbe/zmq4"
+	"log"
 )
 
-func server_task() {
+func serverTask() {
 	// Set the ZMQ sockets
 	frontend,_ := zmq.NewSocket(zmq.ROUTER)
 	defer frontend.Close()
-	frontend.Bind("tcp://"+addr)
+	if err := frontend.Bind("tcp://"+addr); err != nil {
+		fmt.Println("err binding backend")
+	}
 
 	//  Backend socket talks to workers over inproc
 	backend, _ := zmq.NewSocket(zmq.DEALER)
 	defer backend.Close()
-	backend.Bind("inproc://backend")
+	if err := backend.Bind("inproc://backend"); err != nil {
+		fmt.Println("err binding backend")
+	}
 
-	go serverWorker()
+	for i := 0; i < NumWorker; i++{
+		go serverWorker()
+	}
 
 	//  Connect backend to frontend via a proxy
 	err := zmq.Proxy(frontend, backend, nil)
@@ -27,11 +33,13 @@ func server_task() {
 func serverWorker() {
 	worker, _ := zmq.NewSocket(zmq.DEALER)
 	defer worker.Close()
-	worker.Connect("inproc://backend")
+	if err := worker.Connect("inproc://backend"); err != nil {
+		fmt.Println("worker err connecting")
+	}
 	msgReply := make([][]byte, 2)
 
 	for i := 0; i < len(msgReply); i++ {
-		msgReply[i] = make([]byte, 0) // the frist frame  specifies the identity of the sender, the second specifies the content
+		msgReply[i] = make([]byte, 0) // the first frame  specifies the identity of the sender, the second specifies the content
 	}
 
 	for {

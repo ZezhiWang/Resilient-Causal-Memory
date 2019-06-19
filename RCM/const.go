@@ -11,5 +11,5 @@ const FILTER = ""
 
 const F = 1
 
-const NUM_CLIENT = 2
-//const NUM_SERVER = 3
+const NumClient = 2
+const NumWorker = 1
